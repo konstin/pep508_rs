@@ -1,0 +1,26 @@
+[tool.poetry]
+name = "pep508_rs"
+version = "0.1.0"
+description = ""
+authors = ["konstin <konstin@mailbox.org>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = ">=3.7"
+
+[tool.poetry.group.dev.dependencies]
+black = { extras = ["jupyter"], version = "^23.1.0" }
+maturin = "^0.14.15"
+pytest = "^7.2.0"
+ruff = "^0.0.254"
+
+[tool.maturin]
+features = ["pyo3"]
+
+[tool.pytest.ini_options]
+minversion = "7.2.0"
+addopts = "--tb=short"
+
+[build-system]
+requires = ["maturin>=0.14,<0.15"]
+build-backend = "maturin"
