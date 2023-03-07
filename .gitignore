@@ -1,5 +1,5 @@
 .ipynb_checkpoints
 .venv
-/pypi_bigquery_analysis/pipy_requires_dist.ndjson
-/pypi_bigquery_analysis/pypi_all.ndjson
+/pypi_analysis/pipy_requires_dist.ndjson
+/pypi_analysis/pypi_all.ndjson
 target
