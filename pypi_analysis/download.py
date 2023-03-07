@@ -3,7 +3,7 @@ To run this:
  * `pip install google-cloud-bigquery`
  * Download https://cloud.google.com/sdk/docs/install
  * Unpack, skip installation
- * Create a free google cloud acount
+ * Create a free google cloud account
  * `google-cloud-sdk/bin/gcloud auth application-default login`
  * Check `$HOME/.config/gcloud/application_default_credentials.json` is there
  * Run. Takes a while (15min - 1h)
