@@ -74,6 +74,7 @@ impl Display for Pep508ErrorSource {
 impl Display for Pep508Error {
     /// Pretty formatting with underline
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        // We can use char indices here since it's a Vec<char>
         let start_offset = self.input[..self.start].iter().collect::<String>().width();
         let underline_len = if self.start == self.input.len() {
             // We also allow 0 here for convenience
@@ -137,9 +138,7 @@ impl Display for Requirement {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}", self.name)?;
         if let Some(extras) = &self.extras {
-            write!(f, "[")?;
-            write!(f, "{}", extras.join(","))?;
-            write!(f, "]")?;
+            write!(f, "[{}]", extras.join(","))?;
         }
         if let Some(version_or_url) = &self.version_or_url {
             match version_or_url {
@@ -282,6 +281,7 @@ pub enum VersionOrUrl {
 pub struct CharIter<'a> {
     input: &'a str,
     chars: Chars<'a>,
+    /// char-based (not byte-based) position
     pos: usize,
 }
 
@@ -301,6 +301,16 @@ impl<'a> CharIter<'a> {
 
     fn peek(&self) -> Option<(usize, char)> {
         self.chars.clone().next().map(|char| (self.pos, char))
+    }
+
+    fn eat(&mut self, token: char) -> Option<usize> {
+        let (start_pos, peek_char) = self.peek()?;
+        if peek_char == token {
+            self.next();
+            Some(start_pos)
+        } else {
+            None
+        }
     }
 
     fn next(&mut self) -> Option<(usize, char)> {
@@ -374,14 +384,14 @@ impl<'a> CharIter<'a> {
             }),
         }
     }
-}
 
-fn eat_whitespace(chars: &mut CharIter) {
-    while let Some(char) = chars.peek_char() {
-        if char.is_whitespace() {
-            chars.next();
-        } else {
-            return;
+    fn eat_whitespace(&mut self) {
+        while let Some(char) = self.peek_char() {
+            if char.is_whitespace() {
+                self.next();
+            } else {
+                return;
+            }
         }
     }
 }
@@ -438,18 +448,15 @@ fn parse_name(chars: &mut CharIter) -> Result<String, Pep508Error> {
 
 /// parses extras in the `[extra1,extra2] format`
 fn parse_extras(chars: &mut CharIter) -> Result<Option<Vec<String>>, Pep508Error> {
-    let bracket_pos = match chars.peek() {
-        Some((pos, '[')) => {
-            chars.next();
-            pos
-        }
-        None | Some((_, _)) => return Ok(None),
+    let bracket_pos = match chars.eat('[') {
+        Some(pos) => pos,
+        None => return Ok(None),
     };
     let mut extras = Vec::new();
 
     loop {
         // wsp* before the identifier
-        eat_whitespace(chars);
+        chars.eat_whitespace();
         let mut buffer = String::new();
         let early_eof_error = Pep508Error {
             message: Pep508ErrorSource::String(
@@ -505,7 +512,7 @@ fn parse_extras(chars: &mut CharIter) -> Result<Option<Vec<String>>, Pep508Error
             _=>{}
         };
         // wsp* after the identifier
-        eat_whitespace(chars);
+        chars.eat_whitespace();
         // end or next identifier?
         match chars.next() {
             Some((_, ',')) => {
@@ -534,7 +541,7 @@ fn parse_extras(chars: &mut CharIter) -> Result<Option<Vec<String>>, Pep508Error
 
 fn parse_url(chars: &mut CharIter) -> Result<VersionOrUrl, Pep508Error> {
     // wsp*
-    eat_whitespace(chars);
+    chars.eat_whitespace();
     // <URI_reference>
     let (url, start, len) = chars.take_while(|char| !char.is_whitespace());
     if url.is_empty() {
@@ -613,7 +620,7 @@ fn parse_version_specifier_parentheses(
     let brace_pos = chars.get_pos();
     chars.next();
     // Makes for slightly better error underline
-    eat_whitespace(chars);
+    chars.eat_whitespace();
     let mut start = chars.get_pos();
     let mut specifiers = Vec::new();
     let mut buffer = String::new();
@@ -658,15 +665,15 @@ fn parse(chars: &mut CharIter) -> Result<Requirement, Pep508Error> {
     // Where the extras start with '[' if any, then we have '@', '(' or one of the version comparison
     // operators. Markers start with ';' if any
     // wsp*
-    eat_whitespace(chars);
+    chars.eat_whitespace();
     // name
     let name = parse_name(chars)?;
     // wsp*
-    eat_whitespace(chars);
+    chars.eat_whitespace();
     // extras?
     let extras = parse_extras(chars)?;
     // wsp*
-    eat_whitespace(chars);
+    chars.eat_whitespace();
 
     // ( url_req | name_req )?
     let requirement_kind = match chars.peek_char() {
@@ -691,7 +698,7 @@ fn parse(chars: &mut CharIter) -> Result<Requirement, Pep508Error> {
     };
 
     // wsp*
-    eat_whitespace(chars);
+    chars.eat_whitespace();
     // quoted_marker?
     let marker = if chars.peek_char() == Some(';') {
         // Skip past the semicolon
@@ -701,7 +708,7 @@ fn parse(chars: &mut CharIter) -> Result<Requirement, Pep508Error> {
         None
     };
     // wsp*
-    eat_whitespace(chars);
+    chars.eat_whitespace();
     if let Some((pos, char)) = chars.next() {
         return Err(Pep508Error {
             message: Pep508ErrorSource::String(if marker.is_none() {

@@ -9,7 +9,7 @@
 //! outcomes. This implementation tries to carefully validate everything and emit warnings whenever
 //! bogus comparisons with unintended semantics are made.
 
-use crate::{eat_whitespace, CharIter, Pep508Error, Pep508ErrorSource};
+use crate::{CharIter, Pep508Error, Pep508ErrorSource};
 use pep440_rs::{Version, VersionSpecifier};
 #[cfg(feature = "pyo3")]
 use pyo3::{
@@ -943,7 +943,7 @@ fn parse_marker_operator(chars: &mut CharIter) -> Result<MarkerOperator, Pep508E
                 })
             }
         };
-        eat_whitespace(chars);
+        chars.eat_whitespace();
         chars.next_expect_char('i', chars.get_pos())?;
         chars.next_expect_char('n', chars.get_pos())?;
         return Ok(MarkerOperator::NotIn);
@@ -1007,14 +1007,14 @@ fn parse_marker_value(chars: &mut CharIter) -> Result<MarkerValue, Pep508Error> 
 /// marker_var:l marker_op:o marker_var:r
 /// ```
 fn parse_marker_key_op_value(chars: &mut CharIter) -> Result<MarkerTree, Pep508Error> {
-    eat_whitespace(chars);
+    chars.eat_whitespace();
     let lvalue = parse_marker_value(chars)?;
-    eat_whitespace(chars);
+    chars.eat_whitespace();
     // "not in" and "in" must be preceded by whitespace. We must already have matched a whitespace
     // when we're here because other `parse_marker_key` would have pulled the characters in and
     // errored
     let operator = parse_marker_operator(chars)?;
-    eat_whitespace(chars);
+    chars.eat_whitespace();
     let rvalue = parse_marker_value(chars)?;
     Ok(MarkerTree::Expression(MarkerExpression {
         l_value: lvalue,
@@ -1028,9 +1028,8 @@ fn parse_marker_key_op_value(chars: &mut CharIter) -> Result<MarkerTree, Pep508E
 ///               | wsp* '(' marker:m wsp* ')' -> m
 /// ```
 fn parse_marker_expr(chars: &mut CharIter) -> Result<MarkerTree, Pep508Error> {
-    eat_whitespace(chars);
-    if let Some((start_pos, '(')) = chars.peek() {
-        chars.next();
+    chars.eat_whitespace();
+    if let Some(start_pos) = chars.eat('(') {
         let marker = parse_marker_or(chars)?;
         chars.next_expect_char(')', start_pos)?;
         Ok(marker)
@@ -1065,7 +1064,7 @@ fn parse_marker_op(
     // marker_and or marker_expr
     let first_element = parse_inner(chars)?;
     // wsp*
-    eat_whitespace(chars);
+    chars.eat_whitespace();
     // Check if we're done here instead of invoking the whole vec allocating loop
     if matches!(chars.peek_char(), None | Some(')')) {
         return Ok(first_element);
@@ -1075,7 +1074,7 @@ fn parse_marker_op(
     expressions.push(first_element);
     loop {
         // wsp*
-        eat_whitespace(chars);
+        chars.eat_whitespace();
         // ('or' marker_and) or ('and' marker_or)
         let (maybe_op, _start, _len) = chars.peek_while(|c| !c.is_whitespace());
         match maybe_op {
