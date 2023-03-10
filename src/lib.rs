@@ -49,7 +49,7 @@ pub struct Pep508Error {
     /// Span length
     pub len: usize,
     /// The input string so we can print it underlined
-    pub input: Vec<char>,
+    pub input: String,
 }
 
 /// Either we have an error string from our parser or an upstream error from `url`
@@ -75,7 +75,12 @@ impl Display for Pep508Error {
     /// Pretty formatting with underline
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         // We can use char indices here since it's a Vec<char>
-        let start_offset = self.input[..self.start].iter().collect::<String>().width();
+        let start_offset = self
+            .input
+            .chars()
+            .take(self.start)
+            .collect::<String>()
+            .width();
         let underline_len = if self.start == self.input.len() {
             // We also allow 0 here for convenience
             assert!(
@@ -85,8 +90,10 @@ impl Display for Pep508Error {
             );
             1
         } else {
-            self.input[self.start..self.start + self.len]
-                .iter()
+            self.input
+                .chars()
+                .skip(self.start)
+                .take(self.len)
                 .collect::<String>()
                 .width()
         };
@@ -94,7 +101,7 @@ impl Display for Pep508Error {
             f,
             "{}\n{}\n{}{}",
             self.message,
-            self.input.iter().collect::<String>(),
+            self.input,
             " ".repeat(start_offset),
             "^".repeat(underline_len)
         )
@@ -295,8 +302,8 @@ impl<'a> CharIter<'a> {
         }
     }
 
-    fn copy_chars(&self) -> Vec<char> {
-        self.input.to_string().chars().collect()
+    fn copy_chars(&self) -> String {
+        self.input.to_string()
     }
 
     fn peek(&self) -> Option<(usize, char)> {
@@ -491,12 +498,13 @@ fn parse_extras(chars: &mut CharIter) -> Result<Option<Vec<String>>, Pep508Error
         // We handle the illegal character case below
         // identifier_end = letterOrDigit | (('-' | '_' | '.' )* letterOrDigit)
         // identifier_end*
-        while let Some(legal @ ('a'..='z' | 'A'..='Z' | '0'..='9' | '-' | '_' | '.')) =
-            chars.peek_char()
-        {
-            buffer.push(legal);
-            chars.next();
-        }
+        buffer.push_str(
+            &chars
+                .take_while(
+                    |char| matches!(char, 'a'..='z' | 'A'..='Z' | '0'..='9' | '-' | '_' | '.'),
+                )
+                .0,
+        );
         match chars.peek() {
             Some((pos, char)) if char != ',' && char != ']' && !char.is_whitespace() => {
                 return Err(Pep508Error {
