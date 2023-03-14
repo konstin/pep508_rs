@@ -22,7 +22,7 @@ pub mod modern;
 pub use marker::{
     MarkerEnvironment, MarkerExpression, MarkerOperator, MarkerTree, MarkerValue, MarkerWarningKind,
 };
-use pep440_rs::VersionSpecifier;
+use pep440_rs::{VersionSpecifier, VersionSpecifiers};
 #[cfg(feature = "pyo3")]
 use pyo3::{
     basic::CompareOp, create_exception, exceptions::PyNotImplementedError,
@@ -279,7 +279,7 @@ impl Requirement {
 #[derive(Debug, Clone, Eq, Hash, PartialEq)]
 pub enum VersionOrUrl {
     /// A PEP 440 version specifier set
-    VersionSpecifier(Vec<VersionSpecifier>),
+    VersionSpecifier(VersionSpecifiers),
     /// A installable URL
     Url(Url),
 }
@@ -606,7 +606,9 @@ fn parse_version_specifier(chars: &mut CharIter) -> Result<Option<VersionOrUrl>,
                 let end = chars.get_pos();
                 let specifier = parse_specifier(chars, &buffer, start, end)?;
                 specifiers.push(specifier);
-                break Some(VersionOrUrl::VersionSpecifier(specifiers));
+                break Some(VersionOrUrl::VersionSpecifier(
+                    specifiers.into_iter().collect(),
+                ));
             }
             Some((_, char)) => {
                 buffer.push(char);
@@ -644,7 +646,7 @@ fn parse_version_specifier_parentheses(
             Some((end, ')')) => {
                 let specifier = parse_specifier(chars, &buffer, start, end)?;
                 specifiers.push(specifier);
-                break Some(VersionOrUrl::VersionSpecifier(specifiers));
+                break Some(VersionOrUrl::VersionSpecifier(specifiers.into_iter().collect()));
             },
             Some((_, char)) => buffer.push(char),
             None => return Err(Pep508Error {
@@ -813,34 +815,38 @@ mod tests {
         let expected = Requirement {
             name: "requests".to_string(),
             extras: Some(vec!["security".to_string(), "tests".to_string()]),
-            version_or_url: Some(VersionOrUrl::VersionSpecifier(vec![
-                VersionSpecifier::new(
-                    Operator::GreaterThanEqual,
-                    Version {
-                        epoch: 0,
-                        release: vec![2, 8, 1],
-                        pre: None,
-                        post: None,
-                        dev: None,
-                        local: None,
-                    },
-                    false,
-                )
-                .unwrap(),
-                VersionSpecifier::new(
-                    Operator::Equal,
-                    Version {
-                        epoch: 0,
-                        release: vec![2, 8],
-                        pre: None,
-                        post: None,
-                        dev: None,
-                        local: None,
-                    },
-                    true,
-                )
-                .unwrap(),
-            ])),
+            version_or_url: Some(VersionOrUrl::VersionSpecifier(
+                [
+                    VersionSpecifier::new(
+                        Operator::GreaterThanEqual,
+                        Version {
+                            epoch: 0,
+                            release: vec![2, 8, 1],
+                            pre: None,
+                            post: None,
+                            dev: None,
+                            local: None,
+                        },
+                        false,
+                    )
+                    .unwrap(),
+                    VersionSpecifier::new(
+                        Operator::Equal,
+                        Version {
+                            epoch: 0,
+                            release: vec![2, 8],
+                            pre: None,
+                            post: None,
+                            dev: None,
+                            local: None,
+                        },
+                        true,
+                    )
+                    .unwrap(),
+                ]
+                .into_iter()
+                .collect(),
+            )),
             marker: Some(MarkerTree::Expression(MarkerExpression {
                 l_value: MarkerValue::MarkerEnvVersion(MarkerValueVersion::PythonVersion),
                 operator: MarkerOperator::LessThan,

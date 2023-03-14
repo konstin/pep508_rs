@@ -11,7 +11,7 @@ use crate::MarkerValue::QuotedString;
 use crate::{MarkerExpression, MarkerOperator, MarkerTree, MarkerValue, Requirement, VersionOrUrl};
 use anyhow::{bail, format_err, Context};
 use once_cell::sync::Lazy;
-use pep440_rs::{parse_version_specifiers, Operator, Pep440Error, Version, VersionSpecifier};
+use pep440_rs::{Operator, Pep440Error, Version, VersionSpecifier, VersionSpecifiers};
 use regex::Regex;
 use serde::{de, Deserialize, Deserializer, Serialize};
 use std::collections::HashMap;
@@ -42,7 +42,7 @@ pub enum VersionSpecifierModern {
     /// e.g. `4.12.1-beta.1`
     Version(Version),
     /// e.g. `== 4.12.1-beta.1` or `>=3.8,<4.0`
-    VersionSpecifier(Vec<VersionSpecifier>),
+    VersionSpecifier(VersionSpecifiers),
 }
 
 impl VersionSpecifierModern {
@@ -50,11 +50,13 @@ impl VersionSpecifierModern {
     /// `== 4.12.1-beta.1` -> `== 4.12.1-beta.1`
     /// `>=3.8,<4.0` -> `>=3.8,<4.0`
     /// TODO: `^1.19` -> `>=1.19,<2.0`
-    pub fn to_pep508_specifier(&self) -> Vec<VersionSpecifier> {
+    pub fn to_pep508_specifier(&self) -> VersionSpecifiers {
         match self {
             // unwrapping is safe here because we're using Operator::Equal
             VersionSpecifierModern::Version(version) => {
-                vec![VersionSpecifier::new(Operator::Equal, version.clone(), false).unwrap()]
+                [VersionSpecifier::new(Operator::Equal, version.clone(), false).unwrap()]
+                    .into_iter()
+                    .collect()
             }
             VersionSpecifierModern::VersionSpecifier(version_specifiers) => {
                 version_specifiers.clone()
@@ -65,7 +67,7 @@ impl VersionSpecifierModern {
 
 impl FromStr for VersionSpecifierModern {
     /// TODO: Modern needs it's own error type
-    type Err = pep440_rs::Pep440Error;
+    type Err = Pep440Error;
 
     /// dispatching between just a version and a version specifier set
     fn from_str(s: &str) -> Result<Self, Self::Err> {
@@ -83,7 +85,7 @@ impl FromStr for VersionSpecifierModern {
         } else if s.starts_with('^') {
             todo!("TODO caret operator is not supported yet");
         } else {
-            Ok(Self::VersionSpecifier(parse_version_specifiers(s)?))
+            Ok(Self::VersionSpecifier(VersionSpecifiers::from_str(s)?))
         }
     }
 }
@@ -290,7 +292,7 @@ mod test {
     use crate::modern::{RequirementModern, VersionSpecifierModern};
     use crate::Requirement;
     use indoc::indoc;
-    use pep440_rs::parse_version_specifiers;
+    use pep440_rs::VersionSpecifiers;
     use serde::Deserialize;
     use std::collections::{BTreeMap, HashMap};
 
@@ -303,7 +305,7 @@ mod test {
         assert_eq!(
             deps["numpy"],
             RequirementModern::Dependency(VersionSpecifierModern::VersionSpecifier(
-                parse_version_specifiers("==1.19").unwrap()
+                VersionSpecifiers::from_str("==1.19").unwrap()
             ))
         );
         assert_eq!(
