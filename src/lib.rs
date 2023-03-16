@@ -217,23 +217,6 @@ impl Requirement {
         }
     }
 
-    /// TODO: A less hacky solution that handles all cases and has the pep440 str updates
-    #[getter]
-    fn version_specifier_str(&self, py: Python<'_>) -> PyResult<PyObject> {
-        match &self.version_or_url {
-            None => Ok(py.None()),
-            Some(VersionOrUrl::VersionSpecifier(version_specifier)) => Ok(version_specifier
-                .iter()
-                .map(|x| x.to_string())
-                .collect::<Vec<String>>()
-                .into_py(py)),
-            Some(VersionOrUrl::Url(_url)) => Err(PyValueError::new_err(format!(
-                "Expected version specifier, found url for {}",
-                self.name
-            ))),
-        }
-    }
-
     fn __str__(&self) -> String {
         self.to_string()
     }
