@@ -31,6 +31,7 @@ assert requests.extras == ["security", "tests"]
 assert [str(i) for i in requests.version_or_url] == [">= 2.8.1", "== 2.8.*"]
 ```
 
+Python bindings are built with [maturin](https://github.com/PyO3/maturin), but you can also use the normal `pip install .`
 
 ## Markers
 
