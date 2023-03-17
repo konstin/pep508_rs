@@ -22,7 +22,7 @@ pub mod modern;
 pub use marker::{
     MarkerEnvironment, MarkerExpression, MarkerOperator, MarkerTree, MarkerValue, MarkerWarningKind,
 };
-use pep440_rs::{VersionSpecifier, VersionSpecifiers};
+use pep440_rs::{Version, VersionSpecifier, VersionSpecifiers};
 #[cfg(feature = "pyo3")]
 use pyo3::{
     basic::CompareOp, create_exception, exceptions::PyNotImplementedError,
@@ -208,27 +208,12 @@ impl Requirement {
     fn version_or_url(&self, py: Python<'_>) -> PyObject {
         match &self.version_or_url {
             None => py.None(),
-            Some(VersionOrUrl::VersionSpecifier(version_specifier)) => {
-                version_specifier.clone().into_py(py)
-            }
-            Some(VersionOrUrl::Url(url)) => url.to_string().into_py(py),
-        }
-    }
-
-    /// TODO: A less hacky solution that handles all cases and has the pep440 str updates
-    #[getter]
-    fn version_specifier_str(&self, py: Python<'_>) -> PyResult<PyObject> {
-        match &self.version_or_url {
-            None => Ok(py.None()),
-            Some(VersionOrUrl::VersionSpecifier(version_specifier)) => Ok(version_specifier
+            Some(VersionOrUrl::VersionSpecifier(version_specifier)) => version_specifier
                 .iter()
-                .map(|x| x.to_string())
-                .collect::<Vec<String>>()
-                .into_py(py)),
-            Some(VersionOrUrl::Url(_url)) => Err(PyValueError::new_err(format!(
-                "Expected version specifier, found url for {}",
-                self.name
-            ))),
+                .map(|x| x.clone().into_py(py))
+                .collect::<Vec<PyObject>>()
+                .into_py(py),
+            Some(VersionOrUrl::Url(url)) => url.to_string().into_py(py),
         }
     }
 
@@ -742,11 +727,19 @@ fn parse(chars: &mut CharIter) -> Result<Requirement, Pep508Error> {
 
 /// A library for [dependency specifiers](https://packaging.python.org/en/latest/specifications/dependency-specifiers/)
 /// as originally specified in [PEP 508](https://peps.python.org/pep-0508/)
+///
+/// This has `Version` and `VersionSpecifier` included. That is because
+/// `pep440_rs.Version("1.2.3") != pep508_rs.Requirement("numpy==1.2.3").version_or_url` as the
+/// `Version`s come from two different binaries and can therefore never be equal.
 #[cfg(feature = "pyo3")]
 #[pymodule]
-pub fn pep508_rs(py: Python<'_>, m: &PyModule) -> PyResult<()> {
+#[pyo3(name = "pep508_rs")]
+pub fn python_module(py: Python<'_>, m: &PyModule) -> PyResult<()> {
     #[cfg(feature = "pyo3")]
     pyo3_log::init();
+
+    m.add_class::<Version>()?;
+    m.add_class::<VersionSpecifier>()?;
 
     m.add_class::<Requirement>()?;
     m.add_class::<MarkerEnvironment>()?;

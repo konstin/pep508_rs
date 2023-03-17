@@ -1,5 +1,5 @@
 import pytest
-from pep508_rs import Requirement, MarkerEnvironment, Pep508Error
+from pep508_rs import Requirement, MarkerEnvironment, Pep508Error, VersionSpecifier
 
 
 def test_pep508():
@@ -15,7 +15,10 @@ def test_pep508():
     )
     assert requests.name == "requests"
     assert requests.extras == ["security", "tests"]
-    assert [str(i) for i in requests.version_or_url] == [">= 2.8.1", "== 2.8.*"]
+    assert requests.version_or_url == [
+        VersionSpecifier(">= 2.8.1"),
+        VersionSpecifier("== 2.8.*"),
+    ]
 
 
 def test_marker():
