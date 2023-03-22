@@ -22,13 +22,16 @@ pub mod modern;
 pub use marker::{
     MarkerEnvironment, MarkerExpression, MarkerOperator, MarkerTree, MarkerValue, MarkerWarningKind,
 };
-use pep440_rs::{Version, VersionSpecifier, VersionSpecifiers};
+#[cfg(feature = "pyo3")]
+use pep440_rs::Version;
+use pep440_rs::{VersionSpecifier, VersionSpecifiers};
 #[cfg(feature = "pyo3")]
 use pyo3::{
-    basic::CompareOp, create_exception, exceptions::PyNotImplementedError,
-    exceptions::PyValueError, pyclass, pymethods, pymodule, types::PyModule, IntoPy, PyObject,
-    PyResult, Python,
+    basic::CompareOp, create_exception, exceptions::PyNotImplementedError, pyclass, pymethods,
+    pymodule, types::PyModule, IntoPy, PyObject, PyResult, Python,
 };
+#[cfg(feature = "serde")]
+use serde::{de, Deserialize, Deserializer, Serialize, Serializer};
 #[cfg(feature = "pyo3")]
 use std::collections::hash_map::DefaultHasher;
 use std::fmt::{Display, Formatter};
@@ -164,6 +167,29 @@ impl Display for Requirement {
             write!(f, " ; {}", marker)?;
         }
         Ok(())
+    }
+}
+
+/// https://github.com/serde-rs/serde/issues/908#issuecomment-298027413
+#[cfg(feature = "serde")]
+impl<'de> Deserialize<'de> for Requirement {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let s = String::deserialize(deserializer)?;
+        FromStr::from_str(&s).map_err(de::Error::custom)
+    }
+}
+
+/// https://github.com/serde-rs/serde/issues/1316#issue-332908452
+#[cfg(feature = "serde")]
+impl Serialize for Requirement {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        serializer.collect_str(self)
     }
 }
 
