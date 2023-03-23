@@ -193,10 +193,10 @@ impl Serialize for Requirement {
     }
 }
 
-#[cfg(feature = "pyo3")]
-#[pymethods]
+#[cfg_attr(feature = "pyo3", pymethods)]
 impl Requirement {
     /// Parses a PEP 440 string
+    #[cfg(feature = "pyo3")]
     #[new]
     pub fn py_new(requirement: &str) -> PyResult<Self> {
         Self::from_str(requirement).map_err(|err| PyPep508Error::new_err(err.to_string()))
@@ -209,6 +209,19 @@ impl Requirement {
                 env,
                 &extras.iter().map(String::as_str).collect::<Vec<&str>>(),
             )
+        } else {
+            true
+        }
+    }
+
+    /// Returns whether the requirement would be satisfied, independent of environment markers
+    ///
+    /// Note that unlike [evaluate] this does not perform any checks for bogus expressions but will
+    /// simply return true. As caller you should separately perform a check with the an environment
+    //  and forward all warnings.
+    pub fn evaluate_extras(&self, extras: Vec<String>) -> bool {
+        if let Some(marker) = &self.marker {
+            marker.evaluate_extras(&extras.iter().map(String::as_str).collect::<Vec<&str>>())
         } else {
             true
         }
@@ -230,6 +243,7 @@ impl Requirement {
         }
     }
 
+    #[cfg(feature = "pyo3")]
     #[getter]
     fn version_or_url(&self, py: Python<'_>) -> PyObject {
         match &self.version_or_url {
@@ -243,14 +257,17 @@ impl Requirement {
         }
     }
 
+    #[cfg(feature = "pyo3")]
     fn __str__(&self) -> String {
         self.to_string()
     }
 
+    #[cfg(feature = "pyo3")]
     fn __repr__(&self) -> String {
         format!(r#""{}""#, self)
     }
 
+    #[cfg(feature = "pyo3")]
     fn __richcmp__(&self, other: &Self, op: CompareOp) -> PyResult<bool> {
         let err = PyNotImplementedError::new_err("Requirement only supports equality comparisons");
         match op {
@@ -263,6 +280,7 @@ impl Requirement {
         }
     }
 
+    #[cfg(feature = "pyo3")]
     fn __hash__(&self) -> u64 {
         let mut hasher = DefaultHasher::new();
         self.hash(&mut hasher);

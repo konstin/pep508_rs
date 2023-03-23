@@ -654,6 +654,25 @@ impl MarkerExpression {
         }
     }
 
+    /// Checks if the current expression is a `extra == '...'` or a `'...' == extra` and evaluates
+    /// those for the given set of extras.
+    ///
+    /// Note that unlike [evaluate] this does not perform any checks for bogus expressions but will
+    /// simply return true.
+    fn evaluate_extras(&self, extras: &[&str]) -> bool {
+        match (&self.l_value, &self.operator, &self.r_value) {
+            // `extra == '...'`
+            (MarkerValue::Extra, MarkerOperator::Equal, MarkerValue::QuotedString(r_string)) => {
+                extras.contains(&r_string.as_str())
+            }
+            // `'...' == extra`
+            (MarkerValue::QuotedString(l_string), MarkerOperator::Equal, MarkerValue::Extra) => {
+                extras.contains(&l_string.as_str())
+            }
+            _ => true,
+        }
+    }
+
     /// Compare strings by PEP 508 logic, with warnings
     fn compare_strings(
         &self,
@@ -799,6 +818,20 @@ impl MarkerTree {
             MarkerTree::Or(expressions) => expressions
                 .iter()
                 .any(|x| x.evaluate_reporter_impl(env, extras, reporter)),
+        }
+    }
+
+    /// Checks if the requirement should be activated with the given set of extras without
+    /// evaluating the remaining environment markers
+    ///
+    /// Note that unlike [evaluate] this does not perform any checks for bogus expressions but will
+    /// simply return true. As caller you should separately perform a check with the an environment
+    /// and forward all warnings.
+    pub fn evaluate_extras(&self, extras: &[&str]) -> bool {
+        match self {
+            MarkerTree::Expression(expression) => expression.evaluate_extras(extras),
+            MarkerTree::And(expressions) => expressions.iter().all(|x| x.evaluate_extras(extras)),
+            MarkerTree::Or(expressions) => expressions.iter().any(|x| x.evaluate_extras(extras)),
         }
     }
 
@@ -1289,5 +1322,13 @@ mod test {
     #[test]
     fn test_closing_parentheses() {
         MarkerTree::from_str(r#"( "linux" in sys_platform) and extra == 'all'"#).unwrap();
+    }
+
+    #[test]
+    fn test_evaluate_extras() {
+        let marker_tree =
+            MarkerTree::from_str(r#"("linux" in sys_platform) and extra == 'day'"#).unwrap();
+        assert!(marker_tree.evaluate_extras(&["day"]));
+        assert!(!marker_tree.evaluate_extras(&["night"]));
     }
 }
