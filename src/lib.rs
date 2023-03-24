@@ -34,6 +34,7 @@ use pyo3::{
 use serde::{de, Deserialize, Deserializer, Serialize, Serializer};
 #[cfg(feature = "pyo3")]
 use std::collections::hash_map::DefaultHasher;
+use std::collections::HashSet;
 use std::fmt::{Display, Formatter};
 #[cfg(feature = "pyo3")]
 use std::hash::{Hash, Hasher};
@@ -220,9 +221,9 @@ impl Requirement {
     /// Note that unlike [Self::evaluate_markers] this does not perform any checks for bogus
     /// expressions but will simply return true. As caller you should separately perform a check
     /// with an environment and forward all warnings.
-    pub fn evaluate_extras(&self, extras: Vec<String>) -> bool {
+    pub fn evaluate_extras(&self, extras: HashSet<String>) -> bool {
         if let Some(marker) = &self.marker {
-            marker.evaluate_extras(&extras.iter().map(String::as_str).collect::<Vec<&str>>())
+            marker.evaluate_extras(&extras)
         } else {
             true
         }

@@ -15,6 +15,7 @@ use pep440_rs::{Version, VersionSpecifier};
 use pyo3::{
     basic::CompareOp, exceptions::PyValueError, pyclass, pymethods, PyAny, PyResult, Python,
 };
+use std::collections::HashSet;
 use std::fmt::{Display, Formatter};
 use std::str::FromStr;
 use tracing::warn;
@@ -659,15 +660,25 @@ impl MarkerExpression {
     ///
     /// Note that unlike [Self::evaluate] this does not perform any checks for bogus expressions but
     /// will simply return true.
-    fn evaluate_extras(&self, extras: &[&str]) -> bool {
+    ///
+    /// ```rust
+    /// use std::collections::HashSet;
+    /// use std::str::FromStr;
+    /// use pep508_rs::MarkerTree;
+    ///
+    /// let marker_tree = MarkerTree::from_str(r#"("linux" in sys_platform) and extra == 'day'"#).unwrap();
+    /// assert!(marker_tree.evaluate_extras(&["day".to_string()].into()));
+    /// assert!(!marker_tree.evaluate_extras(&["night".to_string()].into()));
+    /// ```
+    fn evaluate_extras(&self, extras: &HashSet<String>) -> bool {
         match (&self.l_value, &self.operator, &self.r_value) {
             // `extra == '...'`
             (MarkerValue::Extra, MarkerOperator::Equal, MarkerValue::QuotedString(r_string)) => {
-                extras.contains(&r_string.as_str())
+                extras.contains(r_string)
             }
             // `'...' == extra`
             (MarkerValue::QuotedString(l_string), MarkerOperator::Equal, MarkerValue::Extra) => {
-                extras.contains(&l_string.as_str())
+                extras.contains(l_string)
             }
             _ => true,
         }
@@ -828,7 +839,7 @@ impl MarkerTree {
     /// Note that unlike [Self::evaluate] this does not perform any checks for bogus expressions but
     /// will simply return true. As caller you should separately perform a check with an environment
     /// and forward all warnings.
-    pub fn evaluate_extras(&self, extras: &[&str]) -> bool {
+    pub fn evaluate_extras(&self, extras: &HashSet<String>) -> bool {
         match self {
             MarkerTree::Expression(expression) => expression.evaluate_extras(extras),
             MarkerTree::And(expressions) => expressions.iter().all(|x| x.evaluate_extras(extras)),
@@ -1323,13 +1334,5 @@ mod test {
     #[test]
     fn test_closing_parentheses() {
         MarkerTree::from_str(r#"( "linux" in sys_platform) and extra == 'all'"#).unwrap();
-    }
-
-    #[test]
-    fn test_evaluate_extras() {
-        let marker_tree =
-            MarkerTree::from_str(r#"("linux" in sys_platform) and extra == 'day'"#).unwrap();
-        assert!(marker_tree.evaluate_extras(&["day"]));
-        assert!(!marker_tree.evaluate_extras(&["night"]));
     }
 }
