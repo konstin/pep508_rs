@@ -657,8 +657,8 @@ impl MarkerExpression {
     /// Checks if the current expression is a `extra == '...'` or a `'...' == extra` and evaluates
     /// those for the given set of extras.
     ///
-    /// Note that unlike [evaluate] this does not perform any checks for bogus expressions but will
-    /// simply return true.
+    /// Note that unlike [Self::evaluate] this does not perform any checks for bogus expressions but
+    /// will simply return true.
     fn evaluate_extras(&self, extras: &[&str]) -> bool {
         match (&self.l_value, &self.operator, &self.r_value) {
             // `extra == '...'`
@@ -822,10 +822,11 @@ impl MarkerTree {
     }
 
     /// Checks if the requirement should be activated with the given set of extras without
-    /// evaluating the remaining environment markers
+    /// evaluating the remaining environment markers, i.e. if there is potentially an environment
+    /// that could activate this requirement.
     ///
-    /// Note that unlike [evaluate] this does not perform any checks for bogus expressions but will
-    /// simply return true. As caller you should separately perform a check with the an environment
+    /// Note that unlike [Self::evaluate] this does not perform any checks for bogus expressions but
+    /// will simply return true. As caller you should separately perform a check with an environment
     /// and forward all warnings.
     pub fn evaluate_extras(&self, extras: &[&str]) -> bool {
         match self {

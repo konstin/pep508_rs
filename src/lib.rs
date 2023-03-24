@@ -214,11 +214,12 @@ impl Requirement {
         }
     }
 
-    /// Returns whether the requirement would be satisfied, independent of environment markers
+    /// Returns whether the requirement would be satisfied, independent of environment markers, i.e.
+    /// if there is potentially an environment that could activate this requirement.
     ///
-    /// Note that unlike [evaluate] this does not perform any checks for bogus expressions but will
-    /// simply return true. As caller you should separately perform a check with the an environment
-    //  and forward all warnings.
+    /// Note that unlike [Self::evaluate_markers] this does not perform any checks for bogus
+    /// expressions but will simply return true. As caller you should separately perform a check
+    /// with an environment and forward all warnings.
     pub fn evaluate_extras(&self, extras: Vec<String>) -> bool {
         if let Some(marker) = &self.marker {
             marker.evaluate_extras(&extras.iter().map(String::as_str).collect::<Vec<&str>>())
