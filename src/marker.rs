@@ -655,8 +655,13 @@ impl MarkerExpression {
         }
     }
 
-    /// Checks if the current expression is a `extra == '...'` or a `'...' == extra` and evaluates
-    /// those for the given set of extras.
+    /// Evaluates only the extras and python version part of the markers. We use this during
+    /// dependency resolution when we want to have packages for all possible environments but
+    /// already know the extras and the possible python versions (from `requires-python`)
+    ///
+    /// This considers only expression in the from `extra == '...'`, `'...' == extra`,
+    /// `python_version <pep PEP 440 operator> '...'` and
+    /// `'...' <pep PEP 440 operator>  python_version`.
     ///
     /// Note that unlike [Self::evaluate] this does not perform any checks for bogus expressions but
     /// will simply return true.
@@ -892,9 +897,10 @@ impl MarkerTree {
         }
     }
 
-    /// Checks if the requirement should be activated with the given set of extras without
-    /// evaluating the remaining environment markers, i.e. if there is potentially an environment
-    /// that could activate this requirement.
+    /// Checks if the requirement should be activated with the given set of active extras and a set
+    /// of possible python versions (from `requires-python`) without evaluating the remaining
+    /// environment markers, i.e. if there is potentially an environment that could activate this
+    /// requirement.
     ///
     /// Note that unlike [Self::evaluate] this does not perform any checks for bogus expressions but
     /// will simply return true. As caller you should separately perform a check with an environment
