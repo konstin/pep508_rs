@@ -783,8 +783,9 @@ fn parse(chars: &mut CharIter) -> Result<Requirement, Pep508Error> {
 #[pymodule]
 #[pyo3(name = "pep508_rs")]
 pub fn python_module(py: Python<'_>, m: &PyModule) -> PyResult<()> {
-    #[cfg(feature = "pyo3")]
-    pyo3_log::init();
+    // Allowed to fail if we embed this module in another
+    #[allow(unused_must_use)]
+    pyo3_log::try_init();
 
     m.add_class::<Version>()?;
     m.add_class::<VersionSpecifier>()?;
