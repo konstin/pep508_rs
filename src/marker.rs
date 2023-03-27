@@ -15,6 +15,7 @@ use pep440_rs::{Version, VersionSpecifier};
 use pyo3::{
     basic::CompareOp, exceptions::PyValueError, pyclass, pymethods, PyAny, PyResult, Python,
 };
+use std::collections::HashSet;
 use std::fmt::{Display, Formatter};
 use std::str::FromStr;
 use tracing::warn;
@@ -654,6 +655,35 @@ impl MarkerExpression {
         }
     }
 
+    /// Checks if the current expression is a `extra == '...'` or a `'...' == extra` and evaluates
+    /// those for the given set of extras.
+    ///
+    /// Note that unlike [Self::evaluate] this does not perform any checks for bogus expressions but
+    /// will simply return true.
+    ///
+    /// ```rust
+    /// use std::collections::HashSet;
+    /// use std::str::FromStr;
+    /// use pep508_rs::MarkerTree;
+    ///
+    /// let marker_tree = MarkerTree::from_str(r#"("linux" in sys_platform) and extra == 'day'"#).unwrap();
+    /// assert!(marker_tree.evaluate_extras(&["day".to_string()].into()));
+    /// assert!(!marker_tree.evaluate_extras(&["night".to_string()].into()));
+    /// ```
+    fn evaluate_extras(&self, extras: &HashSet<String>) -> bool {
+        match (&self.l_value, &self.operator, &self.r_value) {
+            // `extra == '...'`
+            (MarkerValue::Extra, MarkerOperator::Equal, MarkerValue::QuotedString(r_string)) => {
+                extras.contains(r_string)
+            }
+            // `'...' == extra`
+            (MarkerValue::QuotedString(l_string), MarkerOperator::Equal, MarkerValue::Extra) => {
+                extras.contains(l_string)
+            }
+            _ => true,
+        }
+    }
+
     /// Compare strings by PEP 508 logic, with warnings
     fn compare_strings(
         &self,
@@ -799,6 +829,21 @@ impl MarkerTree {
             MarkerTree::Or(expressions) => expressions
                 .iter()
                 .any(|x| x.evaluate_reporter_impl(env, extras, reporter)),
+        }
+    }
+
+    /// Checks if the requirement should be activated with the given set of extras without
+    /// evaluating the remaining environment markers, i.e. if there is potentially an environment
+    /// that could activate this requirement.
+    ///
+    /// Note that unlike [Self::evaluate] this does not perform any checks for bogus expressions but
+    /// will simply return true. As caller you should separately perform a check with an environment
+    /// and forward all warnings.
+    pub fn evaluate_extras(&self, extras: &HashSet<String>) -> bool {
+        match self {
+            MarkerTree::Expression(expression) => expression.evaluate_extras(extras),
+            MarkerTree::And(expressions) => expressions.iter().all(|x| x.evaluate_extras(extras)),
+            MarkerTree::Or(expressions) => expressions.iter().any(|x| x.evaluate_extras(extras)),
         }
     }
 
