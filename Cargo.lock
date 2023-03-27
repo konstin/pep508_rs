@@ -203,7 +203,7 @@ dependencies = [
 [[package]]
 name = "pep440_rs"
 version = "0.2.0"
-source = "git+https://github.com/konstin/pep440-rs#0e9d26526234a6615b1316d6ef7ba79ed6beac09"
+source = "git+https://github.com/konstin/pep440-rs#7bcbbc2ae7159d1032e78a1d98d2c50a85697155"
 dependencies = [
  "lazy_static",
  "pyo3",
