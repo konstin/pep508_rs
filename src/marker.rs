@@ -669,10 +669,10 @@ impl MarkerExpression {
     /// ```rust
     /// # use std::collections::HashSet;
     /// # use std::str::FromStr;
-    /// # use pep508_rs::MarkerTree;
+    /// # use pep508_rs::{MarkerTree, Pep508Error};
     /// # use pep440_rs::Version;
     ///
-    /// # fn main() -> anyhow::Result<()> {
+    /// # fn main() -> Result<(), Pep508Error> {
     /// let marker_tree = MarkerTree::from_str(r#"("linux" in sys_platform) and extra == 'day'"#)?;
     /// let versions: Vec<Version> = (8..12).map(|minor| Version::from_release(vec![3, minor])).collect();
     /// assert!(marker_tree.evaluate_extras_and_python_version(&["day".to_string()].into(), &versions));
