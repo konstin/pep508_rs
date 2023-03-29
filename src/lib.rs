@@ -22,9 +22,7 @@ pub mod modern;
 pub use marker::{
     MarkerEnvironment, MarkerExpression, MarkerOperator, MarkerTree, MarkerValue, MarkerWarningKind,
 };
-#[cfg(feature = "pyo3")]
-use pep440_rs::Version;
-use pep440_rs::{VersionSpecifier, VersionSpecifiers};
+use pep440_rs::{Version, VersionSpecifier, VersionSpecifiers};
 #[cfg(feature = "pyo3")]
 use pyo3::{
     basic::CompareOp, create_exception, exceptions::PyNotImplementedError, pyclass, pymethods,
@@ -221,9 +219,13 @@ impl Requirement {
     /// Note that unlike [Self::evaluate_markers] this does not perform any checks for bogus
     /// expressions but will simply return true. As caller you should separately perform a check
     /// with an environment and forward all warnings.
-    pub fn evaluate_extras(&self, extras: HashSet<String>) -> bool {
+    pub fn evaluate_extras_and_python_version(
+        &self,
+        extras: HashSet<String>,
+        python_versions: Vec<Version>,
+    ) -> bool {
         if let Some(marker) = &self.marker {
-            marker.evaluate_extras(&extras)
+            marker.evaluate_extras_and_python_version(&extras, &python_versions)
         } else {
             true
         }
@@ -781,8 +783,11 @@ fn parse(chars: &mut CharIter) -> Result<Requirement, Pep508Error> {
 #[pymodule]
 #[pyo3(name = "pep508_rs")]
 pub fn python_module(py: Python<'_>, m: &PyModule) -> PyResult<()> {
-    #[cfg(feature = "pyo3")]
-    pyo3_log::init();
+    // Allowed to fail if we embed this module in another
+    #[allow(unused_must_use)]
+    {
+        pyo3_log::try_init();
+    }
 
     m.add_class::<Version>()?;
     m.add_class::<VersionSpecifier>()?;

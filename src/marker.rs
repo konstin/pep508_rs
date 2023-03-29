@@ -655,22 +655,41 @@ impl MarkerExpression {
         }
     }
 
-    /// Checks if the current expression is a `extra == '...'` or a `'...' == extra` and evaluates
-    /// those for the given set of extras.
+    /// Evaluates only the extras and python version part of the markers. We use this during
+    /// dependency resolution when we want to have packages for all possible environments but
+    /// already know the extras and the possible python versions (from `requires-python`)
+    ///
+    /// This considers only expression in the from `extra == '...'`, `'...' == extra`,
+    /// `python_version <pep PEP 440 operator> '...'` and
+    /// `'...' <pep PEP 440 operator>  python_version`.
     ///
     /// Note that unlike [Self::evaluate] this does not perform any checks for bogus expressions but
     /// will simply return true.
     ///
     /// ```rust
-    /// use std::collections::HashSet;
-    /// use std::str::FromStr;
-    /// use pep508_rs::MarkerTree;
+    /// # use std::collections::HashSet;
+    /// # use std::str::FromStr;
+    /// # use pep508_rs::{MarkerTree, Pep508Error};
+    /// # use pep440_rs::Version;
     ///
-    /// let marker_tree = MarkerTree::from_str(r#"("linux" in sys_platform) and extra == 'day'"#).unwrap();
-    /// assert!(marker_tree.evaluate_extras(&["day".to_string()].into()));
-    /// assert!(!marker_tree.evaluate_extras(&["night".to_string()].into()));
+    /// # fn main() -> Result<(), Pep508Error> {
+    /// let marker_tree = MarkerTree::from_str(r#"("linux" in sys_platform) and extra == 'day'"#)?;
+    /// let versions: Vec<Version> = (8..12).map(|minor| Version::from_release(vec![3, minor])).collect();
+    /// assert!(marker_tree.evaluate_extras_and_python_version(&["day".to_string()].into(), &versions));
+    /// assert!(!marker_tree.evaluate_extras_and_python_version(&["night".to_string()].into(), &versions));
+    ///
+    /// let marker_tree = MarkerTree::from_str(r#"extra == 'day' and python_version < '3.11' and '3.10' <= python_version"#)?;
+    /// assert!(!marker_tree.evaluate_extras_and_python_version(&["day".to_string()].into(), &vec![Version::from_release(vec![3, 9])]));
+    /// assert!(marker_tree.evaluate_extras_and_python_version(&["day".to_string()].into(), &vec![Version::from_release(vec![3, 10])]));
+    /// assert!(!marker_tree.evaluate_extras_and_python_version(&["day".to_string()].into(), &vec![Version::from_release(vec![3, 11])]));
+    /// # Ok(())
+    /// # }
     /// ```
-    fn evaluate_extras(&self, extras: &HashSet<String>) -> bool {
+    fn evaluate_extras_and_python_version(
+        &self,
+        extras: &HashSet<String>,
+        python_versions: &[Version],
+    ) -> bool {
         match (&self.l_value, &self.operator, &self.r_value) {
             // `extra == '...'`
             (MarkerValue::Extra, MarkerOperator::Equal, MarkerValue::QuotedString(r_string)) => {
@@ -679,6 +698,51 @@ impl MarkerExpression {
             // `'...' == extra`
             (MarkerValue::QuotedString(l_string), MarkerOperator::Equal, MarkerValue::Extra) => {
                 extras.contains(l_string)
+            }
+            (
+                MarkerValue::MarkerEnvVersion(MarkerValueVersion::PythonVersion),
+                operator,
+                MarkerValue::QuotedString(r_string),
+            ) => {
+                // ignore all errors block
+                (|| {
+                    // The right hand side is allowed to contain a star, e.g. `python_version == '3.*'`
+                    let (r_version, r_star) = Version::from_str_star(r_string).ok()?;
+                    let operator = operator.to_pep440_operator()?;
+                    // operator and right hand side make the specifier
+                    let specifier = VersionSpecifier::new(operator, r_version, r_star).ok()?;
+
+                    let compatible = python_versions
+                        .iter()
+                        .any(|l_version| specifier.contains(l_version));
+                    Some(compatible)
+                })()
+                .unwrap_or(true)
+            }
+            (
+                MarkerValue::QuotedString(l_string),
+                operator,
+                MarkerValue::MarkerEnvVersion(MarkerValueVersion::PythonVersion),
+            ) => {
+                // ignore all errors block
+                (|| {
+                    // Not star allowed here, `'3.*' == python_version` is not a valid PEP 440
+                    // comparison
+                    let l_version = Version::from_str(l_string).ok()?;
+                    let operator = operator.to_pep440_operator()?;
+
+                    let compatible = python_versions.iter().any(|r_version| {
+                        // operator and right hand side make the specifier and in this case the
+                        // right hand is `python_version` so changes every iteration
+                        match VersionSpecifier::new(operator.clone(), r_version.clone(), false) {
+                            Ok(specifier) => specifier.contains(&l_version),
+                            Err(_) => true,
+                        }
+                    });
+
+                    Some(compatible)
+                })()
+                .unwrap_or(true)
             }
             _ => true,
         }
@@ -832,18 +896,29 @@ impl MarkerTree {
         }
     }
 
-    /// Checks if the requirement should be activated with the given set of extras without
-    /// evaluating the remaining environment markers, i.e. if there is potentially an environment
-    /// that could activate this requirement.
+    /// Checks if the requirement should be activated with the given set of active extras and a set
+    /// of possible python versions (from `requires-python`) without evaluating the remaining
+    /// environment markers, i.e. if there is potentially an environment that could activate this
+    /// requirement.
     ///
     /// Note that unlike [Self::evaluate] this does not perform any checks for bogus expressions but
     /// will simply return true. As caller you should separately perform a check with an environment
     /// and forward all warnings.
-    pub fn evaluate_extras(&self, extras: &HashSet<String>) -> bool {
+    pub fn evaluate_extras_and_python_version(
+        &self,
+        extras: &HashSet<String>,
+        python_versions: &[Version],
+    ) -> bool {
         match self {
-            MarkerTree::Expression(expression) => expression.evaluate_extras(extras),
-            MarkerTree::And(expressions) => expressions.iter().all(|x| x.evaluate_extras(extras)),
-            MarkerTree::Or(expressions) => expressions.iter().any(|x| x.evaluate_extras(extras)),
+            MarkerTree::Expression(expression) => {
+                expression.evaluate_extras_and_python_version(extras, python_versions)
+            }
+            MarkerTree::And(expressions) => expressions
+                .iter()
+                .all(|x| x.evaluate_extras_and_python_version(extras, python_versions)),
+            MarkerTree::Or(expressions) => expressions
+                .iter()
+                .any(|x| x.evaluate_extras_and_python_version(extras, python_versions)),
         }
     }
 
