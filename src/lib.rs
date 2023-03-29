@@ -785,7 +785,9 @@ fn parse(chars: &mut CharIter) -> Result<Requirement, Pep508Error> {
 pub fn python_module(py: Python<'_>, m: &PyModule) -> PyResult<()> {
     // Allowed to fail if we embed this module in another
     #[allow(unused_must_use)]
-    pyo3_log::try_init();
+    {
+        pyo3_log::try_init();
+    }
 
     m.add_class::<Version>()?;
     m.add_class::<VersionSpecifier>()?;

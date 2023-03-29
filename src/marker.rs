@@ -667,20 +667,23 @@ impl MarkerExpression {
     /// will simply return true.
     ///
     /// ```rust
-    /// use std::collections::HashSet;
-    /// use std::str::FromStr;
-    /// use pep508_rs::MarkerTree;
-    /// use pep440_rs::Version;
+    /// # use std::collections::HashSet;
+    /// # use std::str::FromStr;
+    /// # use pep508_rs::MarkerTree;
+    /// # use pep440_rs::Version;
     ///
-    /// let marker_tree = MarkerTree::from_str(r#"("linux" in sys_platform) and extra == 'day'"#).unwrap();
+    /// # fn main() -> anyhow::Result<()> {
+    /// let marker_tree = MarkerTree::from_str(r#"("linux" in sys_platform) and extra == 'day'"#)?;
     /// let versions: Vec<Version> = (8..12).map(|minor| Version::from_release(vec![3, minor])).collect();
     /// assert!(marker_tree.evaluate_extras_and_python_version(&["day".to_string()].into(), &versions));
     /// assert!(!marker_tree.evaluate_extras_and_python_version(&["night".to_string()].into(), &versions));
     ///
-    /// let marker_tree = MarkerTree::from_str(r#"extra == 'day' and python_version < '3.11' and '3.10' <= python_version"#).unwrap();
+    /// let marker_tree = MarkerTree::from_str(r#"extra == 'day' and python_version < '3.11' and '3.10' <= python_version"#)?;
     /// assert!(!marker_tree.evaluate_extras_and_python_version(&["day".to_string()].into(), &vec![Version::from_release(vec![3, 9])]));
     /// assert!(marker_tree.evaluate_extras_and_python_version(&["day".to_string()].into(), &vec![Version::from_release(vec![3, 10])]));
     /// assert!(!marker_tree.evaluate_extras_and_python_version(&["day".to_string()].into(), &vec![Version::from_release(vec![3, 11])]));
+    /// # Ok(())
+    /// # }
     /// ```
     fn evaluate_extras_and_python_version(
         &self,
@@ -709,8 +712,6 @@ impl MarkerExpression {
                     // operator and right hand side make the specifier
                     let specifier = VersionSpecifier::new(operator, r_version, r_star).ok()?;
 
-                    // We're passing a lot of versions here, e.g. 3.8 .. 3.100, but since we're
-                    // passing them in order it is expected that we either match early or not at all
                     let compatible = python_versions
                         .iter()
                         .any(|l_version| specifier.contains(l_version));
@@ -730,8 +731,6 @@ impl MarkerExpression {
                     let l_version = Version::from_str(l_string).ok()?;
                     let operator = operator.to_pep440_operator()?;
 
-                    // We're passing a lot of versions here, e.g. 3.8 .. 3.100, but since we're
-                    // passing them in order it is expected that we either match early or not at all
                     let compatible = python_versions.iter().any(|r_version| {
                         // operator and right hand side make the specifier and in this case the
                         // right hand is `python_version` so changes every iteration
