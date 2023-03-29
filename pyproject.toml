@@ -1,9 +1,14 @@
+[project]
+name = "pep508_rs"
+version = "0.1.1"
+readme = "Readme.md"
+
 [tool.poetry]
 name = "pep508_rs"
-version = "0.1.0"
+version = "0.1.1"
 description = ""
 authors = ["konstin <konstin@mailbox.org>"]
-readme = "README.md"
+readme = "Readme.md"
 
 [tool.poetry.dependencies]
 python = ">=3.7"
