@@ -8,9 +8,8 @@ edition = "2021"
 [dependencies]
 anyhow = { version = "1.0.69", optional = true }
 once_cell = "1.17.1"
-# Blocked on https://github.com/PyO3/pyo3/pull/2786
-pep440_rs = { git = "https://github.com/konstin/pep440-rs" }
-pyo3 = { git = "https://github.com/PyO3/pyo3", branch = "cfg-feature-pyo3", optional = true, features = ["abi3", "extension-module"] }
+pep440_rs = "0.3.1"
+pyo3 = { version = "0.18.2", optional = true, features = ["abi3", "extension-module"] }
 pyo3-log = { version = "0.8.0", optional = true }
 regex = { version = "1.7.1", default-features = false, features = ["std"] }
 serde = { version = "1.0.150", features = ["derive"], optional = true }
@@ -43,7 +42,3 @@ debug = true
 inherits = "release"
 strip = true
 
-# For pyo3-log
-# Blocked on https://github.com/PyO3/pyo3/pull/2786
-[patch.crates-io]
-pyo3 = { git = "https://github.com/PyO3/pyo3", branch = "cfg-feature-pyo3" }

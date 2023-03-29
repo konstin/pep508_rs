@@ -2,8 +2,6 @@
 
 A library for python [dependency specifiers](https://packaging.python.org/en/latest/specifications/dependency-specifiers/), better known as [PEP 508](https://peps.python.org/pep-0508/).
 
-Note that we currently don't have published packages for neither rust nor python.
-
 ## Usage
 
 **In Rust**
@@ -32,6 +30,8 @@ assert [str(i) for i in requests.version_or_url] == [">= 2.8.1", "== 2.8.*"]
 ```
 
 Python bindings are built with [maturin](https://github.com/PyO3/maturin), but you can also use the normal `pip install .`
+
+`Version` and `VersionSpecifier` from [pep440_rs](https://github.com/konstin/pep440-rs) are reexported to avoid type mismatches.
 
 ## Markers
 

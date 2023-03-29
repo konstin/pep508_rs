@@ -22,6 +22,8 @@ pub mod modern;
 pub use marker::{
     MarkerEnvironment, MarkerExpression, MarkerOperator, MarkerTree, MarkerValue, MarkerWarningKind,
 };
+#[cfg(feature = "pyo3")]
+use pep440_rs::PyVersion;
 use pep440_rs::{Version, VersionSpecifier, VersionSpecifiers};
 #[cfg(feature = "pyo3")]
 use pyo3::{
@@ -127,11 +129,9 @@ create_exception!(
 pub struct Requirement {
     /// The distribution name such as `numpy` in
     /// `requests [security,tests] >= 2.8.1, == 2.8.* ; python_version > "3.8"`
-    #[cfg_attr(feature = "pyo3", pyo3(get))]
     pub name: String,
     /// The list of extras such as `security`, `tests` in
     /// `requests [security,tests] >= 2.8.1, == 2.8.* ; python_version > "3.8"`
-    #[cfg_attr(feature = "pyo3", pyo3(get))]
     pub extras: Option<Vec<String>>,
     /// The version specifier such as `>= 2.8.1`, `== 2.8.*` in
     /// `requests [security,tests] >= 2.8.1, == 2.8.* ; python_version > "3.8"`
@@ -192,15 +192,107 @@ impl Serialize for Requirement {
     }
 }
 
-#[cfg_attr(feature = "pyo3", pymethods)]
+#[cfg(feature = "pyo3")]
+#[pymethods]
 impl Requirement {
+    /// The distribution name such as `numpy` in
+    /// `requests [security,tests] >= 2.8.1, == 2.8.* ; python_version > "3.8"`
+    #[getter]
+    pub fn name(&self) -> String {
+        self.name.clone()
+    }
+
+    /// The list of extras such as `security`, `tests` in
+    /// `requests [security,tests] >= 2.8.1, == 2.8.* ; python_version > "3.8"`
+    #[getter]
+    pub fn extras(&self) -> Option<Vec<String>> {
+        self.extras.clone()
+    }
+
     /// Parses a PEP 440 string
-    #[cfg(feature = "pyo3")]
     #[new]
     pub fn py_new(requirement: &str) -> PyResult<Self> {
         Self::from_str(requirement).map_err(|err| PyPep508Error::new_err(err.to_string()))
     }
 
+    #[getter]
+    fn version_or_url(&self, py: Python<'_>) -> PyObject {
+        match &self.version_or_url {
+            None => py.None(),
+            Some(VersionOrUrl::VersionSpecifier(version_specifier)) => version_specifier
+                .iter()
+                .map(|x| x.clone().into_py(py))
+                .collect::<Vec<PyObject>>()
+                .into_py(py),
+            Some(VersionOrUrl::Url(url)) => url.to_string().into_py(py),
+        }
+    }
+
+    fn __str__(&self) -> String {
+        self.to_string()
+    }
+
+    fn __repr__(&self) -> String {
+        format!(r#""{}""#, self)
+    }
+
+    fn __richcmp__(&self, other: &Self, op: CompareOp) -> PyResult<bool> {
+        let err = PyNotImplementedError::new_err("Requirement only supports equality comparisons");
+        match op {
+            CompareOp::Lt => Err(err),
+            CompareOp::Le => Err(err),
+            CompareOp::Eq => Ok(self == other),
+            CompareOp::Ne => Ok(self != other),
+            CompareOp::Gt => Err(err),
+            CompareOp::Ge => Err(err),
+        }
+    }
+
+    fn __hash__(&self) -> u64 {
+        let mut hasher = DefaultHasher::new();
+        self.hash(&mut hasher);
+        hasher.finish()
+    }
+
+    /// Returns whether the markers apply for the given environment
+    #[pyo3(name = "evaluate_markers")]
+    pub fn py_evaluate_markers(&self, env: &MarkerEnvironment, extras: Vec<String>) -> bool {
+        self.evaluate_markers(env, extras)
+    }
+
+    /// Returns whether the requirement would be satisfied, independent of environment markers, i.e.
+    /// if there is potentially an environment that could activate this requirement.
+    ///
+    /// Note that unlike [Self::evaluate_markers] this does not perform any checks for bogus
+    /// expressions but will simply return true. As caller you should separately perform a check
+    /// with an environment and forward all warnings.
+    #[pyo3(name = "evaluate_extras_and_python_version")]
+    pub fn py_evaluate_extras_and_python_version(
+        &self,
+        extras: HashSet<String>,
+        python_versions: Vec<PyVersion>,
+    ) -> bool {
+        self.evaluate_extras_and_python_version(
+            extras,
+            python_versions
+                .into_iter()
+                .map(|py_version| py_version.0)
+                .collect(),
+        )
+    }
+
+    /// Returns whether the markers apply for the given environment
+    #[pyo3(name = "evaluate_markers_and_report")]
+    pub fn py_evaluate_markers_and_report(
+        &self,
+        env: &MarkerEnvironment,
+        extras: Vec<String>,
+    ) -> (bool, Vec<(MarkerWarningKind, String, String)>) {
+        self.evaluate_markers_and_report(env, extras)
+    }
+}
+
+impl Requirement {
     /// Returns whether the markers apply for the given environment
     pub fn evaluate_markers(&self, env: &MarkerEnvironment, extras: Vec<String>) -> bool {
         if let Some(marker) = &self.marker {
@@ -245,50 +337,6 @@ impl Requirement {
         } else {
             (true, Vec::new())
         }
-    }
-
-    #[cfg(feature = "pyo3")]
-    #[getter]
-    fn version_or_url(&self, py: Python<'_>) -> PyObject {
-        match &self.version_or_url {
-            None => py.None(),
-            Some(VersionOrUrl::VersionSpecifier(version_specifier)) => version_specifier
-                .iter()
-                .map(|x| x.clone().into_py(py))
-                .collect::<Vec<PyObject>>()
-                .into_py(py),
-            Some(VersionOrUrl::Url(url)) => url.to_string().into_py(py),
-        }
-    }
-
-    #[cfg(feature = "pyo3")]
-    fn __str__(&self) -> String {
-        self.to_string()
-    }
-
-    #[cfg(feature = "pyo3")]
-    fn __repr__(&self) -> String {
-        format!(r#""{}""#, self)
-    }
-
-    #[cfg(feature = "pyo3")]
-    fn __richcmp__(&self, other: &Self, op: CompareOp) -> PyResult<bool> {
-        let err = PyNotImplementedError::new_err("Requirement only supports equality comparisons");
-        match op {
-            CompareOp::Lt => Err(err),
-            CompareOp::Le => Err(err),
-            CompareOp::Eq => Ok(self == other),
-            CompareOp::Ne => Ok(self != other),
-            CompareOp::Gt => Err(err),
-            CompareOp::Ge => Err(err),
-        }
-    }
-
-    #[cfg(feature = "pyo3")]
-    fn __hash__(&self) -> u64 {
-        let mut hasher = DefaultHasher::new();
-        self.hash(&mut hasher);
-        hasher.finish()
     }
 }
 
@@ -789,7 +837,7 @@ pub fn python_module(py: Python<'_>, m: &PyModule) -> PyResult<()> {
         pyo3_log::try_init();
     }
 
-    m.add_class::<Version>()?;
+    m.add_class::<PyVersion>()?;
     m.add_class::<VersionSpecifier>()?;
 
     m.add_class::<Requirement>()?;
