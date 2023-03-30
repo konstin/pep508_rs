@@ -701,11 +701,11 @@ impl MarkerExpression {
             }
             // `extra != '...'`
             (MarkerValue::Extra, MarkerOperator::NotEqual, MarkerValue::QuotedString(r_string)) => {
-                extras.contains(r_string)
+                !extras.contains(r_string)
             }
             // `'...' != extra`
             (MarkerValue::QuotedString(l_string), MarkerOperator::NotEqual, MarkerValue::Extra) => {
-                extras.contains(l_string)
+                !extras.contains(l_string)
             }
             (
                 MarkerValue::MarkerEnvVersion(MarkerValueVersion::PythonVersion),
