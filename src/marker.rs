@@ -699,6 +699,14 @@ impl MarkerExpression {
             (MarkerValue::QuotedString(l_string), MarkerOperator::Equal, MarkerValue::Extra) => {
                 extras.contains(l_string)
             }
+            // `extra != '...'`
+            (MarkerValue::Extra, MarkerOperator::NotEqual, MarkerValue::QuotedString(r_string)) => {
+                extras.contains(r_string)
+            }
+            // `'...' != extra`
+            (MarkerValue::QuotedString(l_string), MarkerOperator::NotEqual, MarkerValue::Extra) => {
+                extras.contains(l_string)
+            }
             (
                 MarkerValue::MarkerEnvVersion(MarkerValueVersion::PythonVersion),
                 operator,
