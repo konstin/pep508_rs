@@ -1018,19 +1018,26 @@ impl MarkerTree {
 
 impl Display for MarkerTree {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        let format_inner = |expression: &MarkerTree| {
+            if matches!(expression, MarkerTree::Expression(_)) {
+                format!("{}", expression)
+            } else {
+                format!("({})", expression)
+            }
+        };
         match self {
             MarkerTree::Expression(expression) => write!(f, "{}", expression),
             MarkerTree::And(and_list) => f.write_str(
                 &and_list
                     .iter()
-                    .map(|expression| format!("({})", expression))
+                    .map(format_inner)
                     .collect::<Vec<String>>()
                     .join(" and "),
             ),
             MarkerTree::Or(or_list) => f.write_str(
                 &or_list
                     .iter()
-                    .map(|expression| format!("({})", expression))
+                    .map(format_inner)
                     .collect::<Vec<String>>()
                     .join(" or "),
             ),
