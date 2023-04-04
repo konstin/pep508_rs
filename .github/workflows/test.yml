@@ -52,8 +52,6 @@ jobs:
         uses: PyO3/maturin-action@v1
         with:
           target: x86_64
-        env:
-          RUSTFLAGS: "-C link-arg=-undefined -C link-arg=dynamic_lookup"
 
   lint:
     runs-on: ubuntu-latest
