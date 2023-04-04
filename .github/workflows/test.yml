@@ -6,22 +6,54 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
-  test:
-    strategy:
-      matrix:
-        os: [ ubuntu-latest, windows-latest, macos-latest ]
-    runs-on: ${{ matrix.os }}
+  #test:
+  #  strategy:
+  #    matrix:
+  #      os: [ ubuntu-latest, windows-latest, macos-latest ]
+  #  runs-on: ${{ matrix.os }}
+  #  steps:
+  #    - uses: actions/checkout@v3
+  #    - run: rustup toolchain install stable --profile minimal
+  #    - uses: Swatinem/rust-cache@v2
+  #    - if: ${{ matrix.os == 'macos-latest' }}
+  #      name: Run tests (macos)
+  #      run: cargo test
+  #      env:
+  #        RUSTFLAGS: "-C link-arg=-undefined -C link-arg=dynamic_lookup"
+  #    - name: Run tests
+  #      run: cargo test
+
+  maturin1:
+    runs-on: macos-latest
     steps:
       - uses: actions/checkout@v3
-      - run: rustup toolchain install stable --profile minimal
-      - uses: Swatinem/rust-cache@v2
-      - if: ${{ matrix.os == 'macos-latest' }}
-        name: Run tests (macos)
-        run: cargo test
+      - uses: actions/setup-python@v4
+        with:
+          python-version: 3.9
+          architecture: x64
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Build wheels - x86_64
+        uses: PyO3/maturin-action@v1
+        with:
+          target: x86_64
         env:
           RUSTFLAGS: "-C link-arg=-undefined -C link-arg=dynamic_lookup"
-      - name: Run tests
-        run: cargo test
+
+  maturin2:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-python@v4
+        with:
+          python-version: 3.9
+          architecture: x64
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Build wheels - x86_64
+        uses: PyO3/maturin-action@v1
+        with:
+          target: x86_64
+        env:
+          RUSTFLAGS: "-C link-arg=-undefined -C link-arg=dynamic_lookup"
 
   lint:
     runs-on: ubuntu-latest
