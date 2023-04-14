@@ -22,7 +22,7 @@ use tracing::warn;
 
 /// Ways in which marker evaluation can fail
 #[cfg_attr(feature = "pyo3", pyclass(module = "pep508"))]
-#[derive(Debug, Eq, Ord, PartialOrd, PartialEq, Clone, Copy)]
+#[derive(Debug, Eq, Hash, Ord, PartialOrd, PartialEq, Clone, Copy)]
 pub enum MarkerWarningKind {
     /// Using an old name from PEP 345 instead of the modern equivalent
     /// <https://peps.python.org/pep-0345/#environment-markers>
@@ -830,6 +830,28 @@ impl MarkerExpression {
     }
 }
 
+impl FromStr for MarkerExpression {
+    type Err = Pep508Error;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let mut chars = CharIter::new(s);
+        let expression = parse_marker_key_op_value(&mut chars)?;
+        chars.eat_whitespace();
+        if let Some((pos, unexpected)) = chars.next() {
+            return Err(Pep508Error {
+                message: Pep508ErrorSource::String(format!(
+                    "Unexpected character '{}', expected end of input",
+                    unexpected
+                )),
+                start: pos,
+                len: 1,
+                input: chars.copy_chars(),
+            });
+        }
+        Ok(expression)
+    }
+}
+
 impl Display for MarkerExpression {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         write!(f, "{} {} {}", self.l_value, self.operator, self.r_value)
@@ -1141,7 +1163,7 @@ fn parse_marker_value(chars: &mut CharIter) -> Result<MarkerValue, Pep508Error> 
 /// ```text
 /// marker_var:l marker_op:o marker_var:r
 /// ```
-fn parse_marker_key_op_value(chars: &mut CharIter) -> Result<MarkerTree, Pep508Error> {
+fn parse_marker_key_op_value(chars: &mut CharIter) -> Result<MarkerExpression, Pep508Error> {
     chars.eat_whitespace();
     let lvalue = parse_marker_value(chars)?;
     chars.eat_whitespace();
@@ -1151,11 +1173,11 @@ fn parse_marker_key_op_value(chars: &mut CharIter) -> Result<MarkerTree, Pep508E
     let operator = parse_marker_operator(chars)?;
     chars.eat_whitespace();
     let rvalue = parse_marker_value(chars)?;
-    Ok(MarkerTree::Expression(MarkerExpression {
+    Ok(MarkerExpression {
         l_value: lvalue,
         operator,
         r_value: rvalue,
-    }))
+    })
 }
 
 /// ```text
@@ -1169,7 +1191,7 @@ fn parse_marker_expr(chars: &mut CharIter) -> Result<MarkerTree, Pep508Error> {
         chars.next_expect_char(')', start_pos)?;
         Ok(marker)
     } else {
-        parse_marker_key_op_value(chars)
+        Ok(MarkerTree::Expression(parse_marker_key_op_value(chars)?))
     }
 }
 
@@ -1262,7 +1284,7 @@ fn parse_markers(markers: &str) -> Result<MarkerTree, Pep508Error> {
 #[cfg(test)]
 mod test {
     use crate::marker::MarkerEnvironment;
-    use crate::MarkerTree;
+    use crate::{MarkerExpression, MarkerOperator, MarkerTree, MarkerValue, MarkerValueString};
     use indoc::indoc;
     use log::Level;
     use pep440_rs::Version;
@@ -1463,6 +1485,32 @@ mod test {
                 Unexpected character '.', expected 'and', 'or' or end of input
                 python_version == "3.8".*
                                        ^"#
+            },
+        );
+    }
+
+    #[test]
+    fn test_marker_expression() {
+        assert_eq!(
+            MarkerExpression::from_str(r#"os_name == "nt""#).unwrap(),
+            MarkerExpression {
+                l_value: MarkerValue::MarkerEnvString(MarkerValueString::OsName),
+                operator: MarkerOperator::Equal,
+                r_value: MarkerValue::QuotedString("nt".to_string()),
+            }
+        );
+    }
+
+    #[test]
+    fn test_marker_expression_to_long() {
+        assert_eq!(
+            MarkerExpression::from_str(r#"os_name == "nt" and python_version >= "3.8""#)
+                .unwrap_err()
+                .to_string(),
+            indoc! {r#"
+                Unexpected character 'a', expected end of input
+                os_name == "nt" and python_version >= "3.8"
+                                ^"#
             },
         );
     }
