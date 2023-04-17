@@ -21,7 +21,7 @@ pub mod modern;
 
 pub use marker::{
     MarkerEnvironment, MarkerExpression, MarkerOperator, MarkerTree, MarkerValue,
-    MarkerValueString, MarkerValueVersion, MarkerWarningKind,
+    MarkerValueString, MarkerValueVersion, MarkerWarningKind, StringVersion,
 };
 #[cfg(feature = "pyo3")]
 use pep440_rs::PyVersion;
