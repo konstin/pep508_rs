@@ -348,12 +348,12 @@ mod test {
             .map(|(name, spec)| spec.to_pep508(name, &deps.extras).unwrap().to_string())
             .collect();
         let expected: Vec<String> = vec![
-            "flask[dotenv] == 2.2.3 ; extra == 'internet'".to_string(),
+            "flask[dotenv] ==2.2.3 ; extra == 'internet'".to_string(),
             "h5py @ file:///home/ferris/wheels/h5py/".to_string(),
             "jax @ https://storage.googleapis.com/jax-releases/cuda112/jaxlib-0.1.64+cuda112-cp39-none-manylinux2010_x86_64.whl".to_string(),
-            "numpy >= 1.24.2, < 2.0.0".to_string(),
-            "pandas >= 1.5.3, < 2.0.0".to_string(),
-            "pydantic == 1.10.5".to_string(),
+            "numpy >=1.24.2, <2.0.0".to_string(),
+            "pandas >=1.5.3, <2.0.0".to_string(),
+            "pydantic ==1.10.5".to_string(),
             "tqdm @ git+https://github.com/tqdm/tqdm@0bb91857eca0d4aea08f66cf1c8949abe0cd6b7a".to_string(),
             "zstandard @ file:///home/ferris/wheels/zstandard/zstandard-0.20.0.tar.gz".to_string()
         ];
