@@ -15,8 +15,11 @@ use pep440_rs::{Version, VersionSpecifier};
 use pyo3::{
     basic::CompareOp, exceptions::PyValueError, pyclass, pymethods, PyAny, PyResult, Python,
 };
+#[cfg(feature = "serde")]
+use serde::{de, Deserialize, Deserializer, Serialize, Serializer};
 use std::collections::HashSet;
 use std::fmt::{Display, Formatter};
+use std::ops::Deref;
 use std::str::FromStr;
 use tracing::warn;
 
@@ -286,26 +289,74 @@ impl Display for MarkerOperator {
     }
 }
 
+/// Helper type with a [Version] and its original text
+#[cfg_attr(feature = "pyo3", pyclass(get_all, module = "pep508"))]
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
+pub struct StringVersion {
+    pub string: String,
+    pub version: Version,
+}
+
+impl FromStr for StringVersion {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        Ok(Self {
+            string: s.to_string(),
+            version: Version::from_str(s)?,
+        })
+    }
+}
+
+#[cfg(feature = "serde")]
+impl Serialize for StringVersion {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        serializer.serialize_str(&self.string)
+    }
+}
+
+#[cfg(feature = "serde")]
+impl<'de> Deserialize<'de> for StringVersion {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let string = String::deserialize(deserializer)?;
+        Self::from_str(&string).map_err(de::Error::custom)
+    }
+}
+
+impl Deref for StringVersion {
+    type Target = Version;
+
+    fn deref(&self) -> &Self::Target {
+        &self.version
+    }
+}
+
 /// The marker values for a python interpreter, normally the current one
 ///
 /// <https://packaging.python.org/en/latest/specifications/dependency-specifiers/#environment-markers>
 ///
 /// Some are `(String, Version)` because we have to support version comparison
 #[allow(missing_docs)]
-#[cfg_attr(feature = "serde", derive(serde::Deserialize))]
+#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 #[cfg_attr(feature = "pyo3", pyclass(get_all, module = "pep508"))]
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub struct MarkerEnvironment {
     pub implementation_name: String,
-    pub implementation_version: (String, Version),
+    pub implementation_version: StringVersion,
     pub os_name: String,
     pub platform_machine: String,
     pub platform_python_implementation: String,
     pub platform_release: String,
     pub platform_system: String,
     pub platform_version: String,
-    pub python_full_version: (String, Version),
-    pub python_version: (String, Version),
+    pub python_full_version: StringVersion,
+    pub python_version: StringVersion,
     pub sys_platform: String,
 }
 
@@ -313,9 +364,9 @@ impl MarkerEnvironment {
     /// Returns of the PEP 440 version typed value of the key in the current environment
     fn get_version(&self, key: &MarkerValueVersion) -> &Version {
         match key {
-            MarkerValueVersion::ImplementationVersion => &self.implementation_version.1,
-            MarkerValueVersion::PythonFullVersion => &self.python_full_version.1,
-            MarkerValueVersion::PythonVersion => &self.python_version.1,
+            MarkerValueVersion::ImplementationVersion => &self.implementation_version.version,
+            MarkerValueVersion::PythonFullVersion => &self.python_full_version.version,
+            MarkerValueVersion::PythonVersion => &self.python_version.version,
         }
     }
 
@@ -375,20 +426,20 @@ impl MarkerEnvironment {
         python_version: &str,
         sys_platform: &str,
     ) -> PyResult<Self> {
-        let implementation_version_pep440 =
-            Version::from_str(implementation_version).map_err(|err| {
+        let implementation_version =
+            StringVersion::from_str(implementation_version).map_err(|err| {
                 PyValueError::new_err(format!(
                     "implementation_version is not a valid PEP440 version: {}",
                     err
                 ))
             })?;
-        let python_full_version_pep440 = Version::from_str(python_full_version).map_err(|err| {
+        let python_full_version = StringVersion::from_str(python_full_version).map_err(|err| {
             PyValueError::new_err(format!(
                 "python_full_version is not a valid PEP440 version: {}",
                 err
             ))
         })?;
-        let python_version_pep440 = Version::from_str(python_version).map_err(|err| {
+        let python_version = StringVersion::from_str(python_version).map_err(|err| {
             PyValueError::new_err(format!(
                 "python_version is not a valid PEP440 version: {}",
                 err
@@ -396,18 +447,15 @@ impl MarkerEnvironment {
         })?;
         Ok(Self {
             implementation_name: implementation_name.to_string(),
-            implementation_version: (
-                implementation_version.to_string(),
-                implementation_version_pep440,
-            ),
+            implementation_version,
             os_name: os_name.to_string(),
             platform_machine: platform_machine.to_string(),
             platform_python_implementation: platform_python_implementation.to_string(),
             platform_release: platform_release.to_string(),
             platform_system: platform_system.to_string(),
             platform_version: platform_version.to_string(),
-            python_full_version: (python_full_version.to_string(), python_full_version_pep440),
-            python_version: (python_version.to_string(), python_version_pep440),
+            python_full_version,
+            python_version,
             sys_platform: sys_platform.to_string(),
         })
     }
@@ -447,20 +495,20 @@ impl MarkerEnvironment {
         let python_version = format!("{}.{}", python_version_tuple.0, python_version_tuple.1);
 
         // This is not written down in PEP 508, but it's the only reasonable assumption to make
-        let implementation_version_pep440 =
-            Version::from_str(&implementation_version).map_err(|err| {
+        let implementation_version =
+            StringVersion::from_str(&implementation_version).map_err(|err| {
                 PyValueError::new_err(format!(
                     "Broken python implementation, implementation_version is not a valid PEP440 version: {}",
                     err
                 ))
             })?;
-        let python_full_version_pep440 = Version::from_str(&python_full_version).map_err(|err| {
+        let python_full_version = StringVersion::from_str(&python_full_version).map_err(|err| {
             PyValueError::new_err(format!(
                 "Broken python implementation, python_full_version is not a valid PEP440 version: {}",
                 err
             ))
         })?;
-        let python_version_pep440 = Version::from_str(&python_version).map_err(|err| {
+        let python_version = StringVersion::from_str(&python_version).map_err(|err| {
             PyValueError::new_err(format!(
                 "Broken python implementation, python_version is not a valid PEP440 version: {}",
                 err
@@ -474,7 +522,7 @@ impl MarkerEnvironment {
                 py.version_info().patch,
                 py.version_info().suffix.unwrap_or_default()
             ),
-            implementation_version: (implementation_version, implementation_version_pep440),
+            implementation_version,
             os_name: os.getattr("name")?.extract()?,
             platform_machine: platform.getattr("machine")?.call0()?.extract()?,
             platform_python_implementation: platform
@@ -484,8 +532,8 @@ impl MarkerEnvironment {
             platform_release: platform.getattr("release")?.call0()?.extract()?,
             platform_system: platform.getattr("system")?.call0()?.extract()?,
             platform_version: platform.getattr("version")?.call0()?.extract()?,
-            python_full_version: (python_full_version, python_full_version_pep440),
-            python_version: (python_version, python_version_pep440),
+            python_full_version,
+            python_version,
             sys_platform: sys.getattr("platform")?.extract()?,
         })
     }
@@ -1283,11 +1331,10 @@ fn parse_markers(markers: &str) -> Result<MarkerTree, Pep508Error> {
 
 #[cfg(test)]
 mod test {
-    use crate::marker::MarkerEnvironment;
+    use crate::marker::{MarkerEnvironment, StringVersion};
     use crate::{MarkerExpression, MarkerOperator, MarkerTree, MarkerValue, MarkerValueString};
     use indoc::indoc;
     use log::Level;
-    use pep440_rs::Version;
     use std::str::FromStr;
 
     fn assert_err(input: &str, error: &str) {
@@ -1295,19 +1342,19 @@ mod test {
     }
 
     fn env37() -> MarkerEnvironment {
-        let v37 = Version::from_str("3.7").unwrap();
+        let v37 = StringVersion::from_str("3.7").unwrap();
 
         MarkerEnvironment {
             implementation_name: "".to_string(),
-            implementation_version: ("3.7".to_string(), v37.clone()),
+            implementation_version: v37.clone(),
             os_name: "linux".to_string(),
             platform_machine: "".to_string(),
             platform_python_implementation: "".to_string(),
             platform_release: "".to_string(),
             platform_system: "".to_string(),
             platform_version: "".to_string(),
-            python_full_version: ("3.7".to_string(), v37.clone()),
-            python_version: ("3.7".to_string(), v37),
+            python_full_version: v37.clone(),
+            python_version: v37,
             sys_platform: "linux".to_string(),
         }
     }
@@ -1353,18 +1400,18 @@ mod test {
 
     #[test]
     fn test_marker_evaluation() {
-        let v27 = Version::from_str("2.7").unwrap();
+        let v27 = StringVersion::from_str("2.7").unwrap();
         let env27 = MarkerEnvironment {
             implementation_name: "".to_string(),
-            implementation_version: ("2.7".to_string(), v27.clone()),
+            implementation_version: v27.clone(),
             os_name: "linux".to_string(),
             platform_machine: "".to_string(),
             platform_python_implementation: "".to_string(),
             platform_release: "".to_string(),
             platform_system: "".to_string(),
             platform_version: "".to_string(),
-            python_full_version: ("2.7".to_string(), v27.clone()),
-            python_version: ("2.7".to_string(), v27),
+            python_full_version: v27.clone(),
+            python_version: v27,
             sys_platform: "linux".to_string(),
         };
         let env37 = env37();
@@ -1513,5 +1560,26 @@ mod test {
                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^"#
             },
         );
+    }
+
+    #[cfg(feature = "serde")]
+    #[test]
+    fn test_marker_environment_from_json() {
+        let _env: MarkerEnvironment = serde_json::from_str(
+            r##"{
+                "implementation_name": "cpython", 
+                "implementation_version": "3.7.13",
+                "os_name": "posix",
+                "platform_machine": "x86_64",
+                "platform_python_implementation": "CPython",
+                "platform_release": "5.4.188+",
+                "platform_system": "Linux",
+                "platform_version": "#1 SMP Sun Apr 24 10:03:06 PDT 2022",
+                "python_full_version": "3.7.13",
+                "python_version": "3.7",
+                "sys_platform": "linux"
+            }"##,
+        )
+        .unwrap();
     }
 }

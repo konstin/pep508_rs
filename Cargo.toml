@@ -1,6 +1,6 @@
 [package]
 name = "pep508_rs"
-version = "0.1.5"
+version = "0.2.0"
 description = "A library for python dependency specifiers, better known as PEP 508"
 edition = "2021"
 include = ["/src", "Changelog.md", "License-Apache", "License-BSD", "Readme.md", "pyproject.toml"]
@@ -28,6 +28,7 @@ url = { version = "2.3.1", features = ["serde"] }
 indoc = "2.0.0"
 log = "0.4.17"
 testing_logger = "0.1.1"
+serde_json = "1.0.96"
 
 [features]
 pyo3 = ["dep:pyo3", "pep440_rs/pyo3", "pyo3-log"]
