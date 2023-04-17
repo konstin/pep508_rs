@@ -844,7 +844,7 @@ impl FromStr for MarkerExpression {
                     unexpected
                 )),
                 start: pos,
-                len: 1,
+                len: chars.chars.clone().count(),
                 input: chars.copy_chars(),
             });
         }
@@ -1267,7 +1267,7 @@ pub(crate) fn parse_markers_impl(chars: &mut CharIter) -> Result<MarkerTree, Pep
                 unexpected
             )),
             start: pos,
-            len: 1,
+            len: chars.chars.clone().count(),
             input: chars.copy_chars(),
         });
     };
@@ -1476,7 +1476,7 @@ mod test {
             indoc! {r#"
                 Unexpected character '.', expected 'and', 'or' or end of input
                 python_version == "3.8".* and python_version >= "3.8"
-                                       ^"#
+                                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^"#
             },
         );
         assert_err(
@@ -1510,7 +1510,7 @@ mod test {
             indoc! {r#"
                 Unexpected character 'a', expected end of input
                 os_name == "nt" and python_version >= "3.8"
-                                ^"#
+                                ^^^^^^^^^^^^^^^^^^^^^^^^^^"#
             },
         );
     }
