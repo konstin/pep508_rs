@@ -22,7 +22,7 @@ use tracing::warn;
 
 /// Ways in which marker evaluation can fail
 #[cfg_attr(feature = "pyo3", pyclass(module = "pep508"))]
-#[derive(Debug, Eq, Ord, PartialOrd, PartialEq, Clone, Copy)]
+#[derive(Debug, Eq, Hash, Ord, PartialOrd, PartialEq, Clone, Copy)]
 pub enum MarkerWarningKind {
     /// Using an old name from PEP 345 instead of the modern equivalent
     /// <https://peps.python.org/pep-0345/#environment-markers>
@@ -593,7 +593,7 @@ impl MarkerExpression {
             // This is either MarkerEnvVersion, MarkerEnvString or Extra inverted
             MarkerValue::QuotedString(l_string) => {
                 match &self.r_value {
-                    // The only sound choice for this is `<version key> <version op> <quoted PEP 440 version>`
+                    // The only sound choice for this is `<quoted PEP 440 version> <version op>` <version key>
                     MarkerValue::MarkerEnvVersion(r_key) => {
                         let l_version = match Version::from_str(l_string) {
                             Ok(l_version) => l_version,
@@ -827,6 +827,28 @@ impl MarkerExpression {
                 false
             }
         }
+    }
+}
+
+impl FromStr for MarkerExpression {
+    type Err = Pep508Error;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let mut chars = CharIter::new(s);
+        let expression = parse_marker_key_op_value(&mut chars)?;
+        chars.eat_whitespace();
+        if let Some((pos, unexpected)) = chars.next() {
+            return Err(Pep508Error {
+                message: Pep508ErrorSource::String(format!(
+                    "Unexpected character '{}', expected end of input",
+                    unexpected
+                )),
+                start: pos,
+                len: chars.chars.clone().count(),
+                input: chars.copy_chars(),
+            });
+        }
+        Ok(expression)
     }
 }
 
@@ -1141,7 +1163,7 @@ fn parse_marker_value(chars: &mut CharIter) -> Result<MarkerValue, Pep508Error> 
 /// ```text
 /// marker_var:l marker_op:o marker_var:r
 /// ```
-fn parse_marker_key_op_value(chars: &mut CharIter) -> Result<MarkerTree, Pep508Error> {
+fn parse_marker_key_op_value(chars: &mut CharIter) -> Result<MarkerExpression, Pep508Error> {
     chars.eat_whitespace();
     let lvalue = parse_marker_value(chars)?;
     chars.eat_whitespace();
@@ -1151,11 +1173,11 @@ fn parse_marker_key_op_value(chars: &mut CharIter) -> Result<MarkerTree, Pep508E
     let operator = parse_marker_operator(chars)?;
     chars.eat_whitespace();
     let rvalue = parse_marker_value(chars)?;
-    Ok(MarkerTree::Expression(MarkerExpression {
+    Ok(MarkerExpression {
         l_value: lvalue,
         operator,
         r_value: rvalue,
-    }))
+    })
 }
 
 /// ```text
@@ -1169,7 +1191,7 @@ fn parse_marker_expr(chars: &mut CharIter) -> Result<MarkerTree, Pep508Error> {
         chars.next_expect_char(')', start_pos)?;
         Ok(marker)
     } else {
-        parse_marker_key_op_value(chars)
+        Ok(MarkerTree::Expression(parse_marker_key_op_value(chars)?))
     }
 }
 
@@ -1234,22 +1256,43 @@ fn parse_marker_op(
 /// marker        = marker_or
 /// ```
 pub(crate) fn parse_markers_impl(chars: &mut CharIter) -> Result<MarkerTree, Pep508Error> {
-    parse_marker_or(chars)
+    let marker = parse_marker_or(chars)?;
+    chars.eat_whitespace();
+    if let Some((pos, unexpected)) = chars.next() {
+        // If we're here, both parse_marker_or and parse_marker_and returned because the next
+        // character was neither "and" nor "or"
+        return Err(Pep508Error {
+            message: Pep508ErrorSource::String(format!(
+                "Unexpected character '{}', expected 'and', 'or' or end of input",
+                unexpected
+            )),
+            start: pos,
+            len: chars.chars.clone().count(),
+            input: chars.copy_chars(),
+        });
+    };
+    Ok(marker)
 }
 
 /// Parses markers such as `python_version < '3.8'` or
 /// `python_version == "3.10" and (sys_platform == "win32" or (os_name == "linux" and implementation_name == 'cpython'))`
 fn parse_markers(markers: &str) -> Result<MarkerTree, Pep508Error> {
-    parse_markers_impl(&mut CharIter::new(markers))
+    let mut chars = CharIter::new(markers);
+    parse_markers_impl(&mut chars)
 }
 
 #[cfg(test)]
 mod test {
     use crate::marker::MarkerEnvironment;
-    use crate::MarkerTree;
+    use crate::{MarkerExpression, MarkerOperator, MarkerTree, MarkerValue, MarkerValueString};
+    use indoc::indoc;
     use log::Level;
     use pep440_rs::Version;
     use std::str::FromStr;
+
+    fn assert_err(input: &str, error: &str) {
+        assert_eq!(MarkerTree::from_str(input).unwrap_err().to_string(), error);
+    }
 
     fn env37() -> MarkerEnvironment {
         let v37 = Version::from_str("3.7").unwrap();
@@ -1424,5 +1467,51 @@ mod test {
     #[test]
     fn test_closing_parentheses() {
         MarkerTree::from_str(r#"( "linux" in sys_platform) and extra == 'all'"#).unwrap();
+    }
+
+    #[test]
+    fn wrong_quotes_dot_star() {
+        assert_err(
+            r#"python_version == "3.8".* and python_version >= "3.8""#,
+            indoc! {r#"
+                Unexpected character '.', expected 'and', 'or' or end of input
+                python_version == "3.8".* and python_version >= "3.8"
+                                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^"#
+            },
+        );
+        assert_err(
+            r#"python_version == "3.8".*"#,
+            indoc! {r#"
+                Unexpected character '.', expected 'and', 'or' or end of input
+                python_version == "3.8".*
+                                       ^"#
+            },
+        );
+    }
+
+    #[test]
+    fn test_marker_expression() {
+        assert_eq!(
+            MarkerExpression::from_str(r#"os_name == "nt""#).unwrap(),
+            MarkerExpression {
+                l_value: MarkerValue::MarkerEnvString(MarkerValueString::OsName),
+                operator: MarkerOperator::Equal,
+                r_value: MarkerValue::QuotedString("nt".to_string()),
+            }
+        );
+    }
+
+    #[test]
+    fn test_marker_expression_to_long() {
+        assert_eq!(
+            MarkerExpression::from_str(r#"os_name == "nt" and python_version >= "3.8""#)
+                .unwrap_err()
+                .to_string(),
+            indoc! {r#"
+                Unexpected character 'a', expected end of input
+                os_name == "nt" and python_version >= "3.8"
+                                ^^^^^^^^^^^^^^^^^^^^^^^^^^"#
+            },
+        );
     }
 }
