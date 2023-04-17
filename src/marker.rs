@@ -293,7 +293,9 @@ impl Display for MarkerOperator {
 #[cfg_attr(feature = "pyo3", pyclass(get_all, module = "pep508"))]
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub struct StringVersion {
+    /// Original unchanged string
     pub string: String,
+    /// Parsed version
     pub version: Version,
 }
 
