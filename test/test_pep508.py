@@ -11,13 +11,13 @@ def test_pep508():
     assert not req2.evaluate_markers(env, [])
 
     requests = Requirement(
-        'requests [security,tests] >= 2.8.1, == 2.8.* ; python_version > "3.8"'
+        'requests [security,tests] >=2.8.1, ==2.8.* ; python_version > "3.8"'
     )
     assert requests.name == "requests"
     assert requests.extras == ["security", "tests"]
     assert requests.version_or_url == [
-        VersionSpecifier(">= 2.8.1"),
-        VersionSpecifier("== 2.8.*"),
+        VersionSpecifier(">=2.8.1"),
+        VersionSpecifier("==2.8.*"),
     ]
 
 

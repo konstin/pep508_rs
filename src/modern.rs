@@ -327,8 +327,8 @@ mod test {
         let pyproject_toml = indoc! {r#"
             [modern-dependencies]
             pydantic = "1.10.5"
-            numpy = ">=1.24.2,<2.0.0"
-            pandas = { version = ">=1.5.3,<2.0.0" }
+            numpy = ">=1.24.2, <2.0.0"
+            pandas = { version = ">=1.5.3, <2.0.0" }
             flask = { version = "2.2.3 ", extras = ["dotenv"], optional = true }
             tqdm = { git = "https://github.com/tqdm/tqdm", rev = "0bb91857eca0d4aea08f66cf1c8949abe0cd6b7a" }
             jax = { url = "https://storage.googleapis.com/jax-releases/cuda112/jaxlib-0.1.64+cuda112-cp39-none-manylinux2010_x86_64.whl" }
