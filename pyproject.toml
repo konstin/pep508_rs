@@ -16,9 +16,9 @@ python = ">=3.7"
 
 [tool.poetry.group.dev.dependencies]
 black = { extras = ["jupyter"], version = "^23.1.0" }
-maturin = "^0.14.15"
+maturin = "^0.15.1"
 pytest = "^7.2.0"
-ruff = "^0.0.254"
+ruff = "^0.0.265"
 
 [tool.maturin]
 features = ["pyo3"]
@@ -28,5 +28,5 @@ minversion = "7.2.0"
 addopts = "--tb=short"
 
 [build-system]
-requires = ["maturin>=0.14,<0.15"]
+requires = ["maturin >=0.15, <0.16"]
 build-backend = "maturin"
