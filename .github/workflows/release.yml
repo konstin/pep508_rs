@@ -162,14 +162,13 @@ jobs:
   release:
     name: Release
     runs-on: ubuntu-latest
+    environment: release
     needs: [ macos, windows, linux, linux-cross, musllinux, musllinux-cross ]
     steps:
       - uses: actions/download-artifact@v3
         with:
           name: wheels
       - name: Publish to PyPI
-        env:
-          MATURIN_PYPI_TOKEN: ${{ secrets.PYPI_TOKEN }}
         uses: PyO3/maturin-action@v1
         with:
           command: upload
