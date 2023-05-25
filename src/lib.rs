@@ -210,6 +210,17 @@ impl Requirement {
         self.extras.clone()
     }
 
+    /// The marker expression such as  `python_version > "3.8"` in
+    /// `requests [security,tests] >= 2.8.1, == 2.8.* ; python_version > "3.8"`
+    #[getter]
+    pub fn marker(&self) -> Option<String> {
+        if self.marker.is_some() {
+            Some(self.marker.as_ref().unwrap().to_string())
+        } else {
+            None
+        }
+    }
+    
     /// Parses a PEP 440 string
     #[new]
     pub fn py_new(requirement: &str) -> PyResult<Self> {
