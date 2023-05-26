@@ -216,7 +216,7 @@ impl Requirement {
     pub fn marker(&self) -> Option<String> {
         self.marker.as_ref().map(|m| m.to_string())
     }
-    
+
     /// Parses a PEP 440 string
     #[new]
     pub fn py_new(requirement: &str) -> PyResult<Self> {
