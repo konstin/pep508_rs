@@ -19,6 +19,7 @@ def test_pep508():
         VersionSpecifier(">=2.8.1"),
         VersionSpecifier("==2.8.*"),
     ]
+    assert requests.marker == "python_version > '3.8'"
 
 
 def test_marker():
