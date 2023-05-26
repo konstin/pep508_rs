@@ -44,8 +44,8 @@ def check_marker_values():
 
     env = MarkerEnvironment.current()
     assert env.implementation_name == sys.implementation.name
-    lib = env.implementation_version.version
 
+    lib = env.implementation_version.version
     runtime = sys.implementation.version
     assert lib.major == runtime.major
     assert lib.minor == runtime.minor
@@ -114,7 +114,7 @@ def test_warnings(caplog):
     # pickleshare 0.7.5
     Requirement("numpy; python_version in '2.6 2.7 3.2 3.3'").evaluate_markers(env, [])
     assert caplog.messages == [
-        "Expected PEP 440 version to compare with python_version, found '2.6 2.7 3.2 3.3', "
+        "Expected PEP 440 version to compare with python_version, "
+        "found '2.6 2.7 3.2 3.3', "
         "evaluating to false: Version `2.6 2.7 3.2 3.3` doesn't match PEP 440 rules"
     ]
-
