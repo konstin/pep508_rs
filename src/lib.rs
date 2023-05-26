@@ -214,11 +214,7 @@ impl Requirement {
     /// `requests [security,tests] >= 2.8.1, == 2.8.* ; python_version > "3.8"`
     #[getter]
     pub fn marker(&self) -> Option<String> {
-        if self.marker.is_some() {
-            Some(self.marker.as_ref().unwrap().to_string())
-        } else {
-            None
-        }
+        self.marker.as_ref().map(|m| m.to_string())
     }
     
     /// Parses a PEP 440 string
