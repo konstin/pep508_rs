@@ -33,6 +33,30 @@ def test_marker():
         "numpy; extra == 'science' or extra == 'arrays'"
     ).evaluate_markers(env, ["science"])
 
+def test_marker_values():
+    import sys
+    import os
+    import platform
+
+    env = MarkerEnvironment.current()
+    assert env.implementation_name == sys.implementation.name
+    lib = env.implementation_version.version
+
+    runtime = sys.implementation.version
+    assert lib.major == runtime.major
+    assert lib.minor == runtime.minor
+    assert lib.micro == runtime.micro
+    # assert lib.releaselevel == runtime.releaselevel
+    # assert lib.serial == runtime.serial
+
+    assert env.os_name == os.name
+    assert env.platform_machine == platform.machine()
+    assert env.platform_python_implementation == platform.python_implementation()
+    assert env.platform_release == platform.release()
+    assert env.platform_system == platform.system()
+    assert env.python_full_version.string == platform.python_version()
+    assert env.python_version.string == f"{lib.major}.{lib.minor}"
+    assert env.sys_platform == sys.platform
 
 def test_errors():
     with pytest.raises(
