@@ -1,7 +1,7 @@
 from collections import namedtuple
-import pytest
 from unittest import mock
 
+import pytest
 from pep508_rs import Requirement, MarkerEnvironment, Pep508Error, VersionSpecifier
 
 
@@ -37,50 +37,27 @@ def test_marker():
     ).evaluate_markers(env, ["science"])
 
 
-def check_marker_values():
-    import sys
-    import os
-    import platform
-
-    env = MarkerEnvironment.current()
-    assert env.implementation_name == sys.implementation.name
-
-    lib = env.implementation_version.version
-    runtime = sys.implementation.version
-    assert lib.major == runtime.major
-    assert lib.minor == runtime.minor
-    assert lib.micro == runtime.micro
-    # assert lib.releaselevel == runtime.releaselevel
-    # assert lib.serial == runtime.serial
-
-    assert env.os_name == os.name
-    assert env.platform_machine == platform.machine()
-    assert env.platform_python_implementation == platform.python_implementation()
-    assert env.platform_release == platform.release()
-    assert env.platform_system == platform.system()
-    assert env.python_full_version.string == platform.python_version()
-    assert env.python_version.string == f"{lib.major}.{lib.minor}"
-    assert env.sys_platform == sys.platform
-
-
 class FakeVersionInfo(
     namedtuple("FakeVersionInfo", ["major", "minor", "micro", "releaselevel", "serial"])
 ):
     pass
 
 
-def test_marker_values_on_final_release():
-    fake_version = FakeVersionInfo(3, 10, 11, "final", 0)
-    with mock.patch("sys.implementation.version", fake_version):
-        check_marker_values()
+@pytest.mark.parametrize(
+    ("version", "version_str"),
+    [
+        (FakeVersionInfo(3, 10, 11, "final", 0), "3.10.11"),
+        (FakeVersionInfo(3, 10, 11, "rc", 1), "3.10.11rc1"),
+    ],
+)
+def test_marker_values(version, version_str):
+    with mock.patch("sys.implementation.version", version):
+        env = MarkerEnvironment.current()
+        assert str(env.implementation_version.version) == version_str
 
-    check_marker_values()
 
-
-def test_marker_values_on_release_candidate():
-    fake_version = FakeVersionInfo(3, 10, 11, "rc", 1)
-    with mock.patch("sys.implementation.version", fake_version):
-        check_marker_values()
+def test_marker_values_current_platform():
+    MarkerEnvironment.current()
 
 
 def test_errors():

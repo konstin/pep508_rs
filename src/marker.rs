@@ -484,12 +484,7 @@ impl MarkerEnvironment {
             info.getattr("minor")?.extract::<usize>()?,
             info.getattr("micro")?.extract::<usize>()?,
             if kind != "final" {
-                format!(
-                    "{}{}",
-                    // This should never be empty, if it is, crashing right
-                    kind.chars().next().unwrap(),
-                    info.getattr("serial")?.extract::<usize>()?
-                )
+                format!("{}{}", kind, info.getattr("serial")?.extract::<usize>()?)
             } else {
                 "".to_string()
             }
