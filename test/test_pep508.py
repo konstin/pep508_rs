@@ -1,3 +1,6 @@
+from collections import namedtuple
+from unittest import mock
+
 import pytest
 from pep508_rs import Requirement, MarkerEnvironment, Pep508Error, VersionSpecifier
 
@@ -34,6 +37,29 @@ def test_marker():
     ).evaluate_markers(env, ["science"])
 
 
+class FakeVersionInfo(
+    namedtuple("FakeVersionInfo", ["major", "minor", "micro", "releaselevel", "serial"])
+):
+    pass
+
+
+@pytest.mark.parametrize(
+    ("version", "version_str"),
+    [
+        (FakeVersionInfo(3, 10, 11, "final", 0), "3.10.11"),
+        (FakeVersionInfo(3, 10, 11, "rc", 1), "3.10.11rc1"),
+    ],
+)
+def test_marker_values(version, version_str):
+    with mock.patch("sys.implementation.version", version):
+        env = MarkerEnvironment.current()
+        assert str(env.implementation_version.version) == version_str
+
+
+def test_marker_values_current_platform():
+    MarkerEnvironment.current()
+
+
 def test_errors():
     with pytest.raises(
         Pep508Error,
@@ -60,4 +86,12 @@ def test_warnings(caplog):
     assert caplog.messages == [
         "Expected PEP 440 version to compare with python_version, found '3.9.', "
         "evaluating to false: Version `3.9.` doesn't match PEP 440 rules"
+    ]
+    caplog.clear()
+    # pickleshare 0.7.5
+    Requirement("numpy; python_version in '2.6 2.7 3.2 3.3'").evaluate_markers(env, [])
+    assert caplog.messages == [
+        "Expected PEP 440 version to compare with python_version, "
+        "found '2.6 2.7 3.2 3.3', "
+        "evaluating to false: Version `2.6 2.7 3.2 3.3` doesn't match PEP 440 rules"
     ]

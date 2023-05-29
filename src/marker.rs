@@ -475,6 +475,7 @@ impl MarkerEnvironment {
 
         // See pseudocode at
         // https://packaging.python.org/en/latest/specifications/dependency-specifiers/#environment-markers
+        let name = sys.getattr("implementation")?.getattr("name")?.extract()?;
         let info: &PyAny = sys.getattr("implementation")?.getattr("version")?;
         let kind = info.getattr("releaselevel")?.extract::<String>()?;
         let implementation_version: String = format!(
@@ -483,12 +484,7 @@ impl MarkerEnvironment {
             info.getattr("minor")?.extract::<usize>()?,
             info.getattr("micro")?.extract::<usize>()?,
             if kind != "final" {
-                format!(
-                    "{}{}",
-                    // This should never be empty, if it is, crashing right
-                    kind.chars().next().unwrap(),
-                    info.getattr("serial")?.extract::<String>()?
-                )
+                format!("{}{}", kind, info.getattr("serial")?.extract::<usize>()?)
             } else {
                 "".to_string()
             }
@@ -517,13 +513,7 @@ impl MarkerEnvironment {
             ))
         })?;
         Ok(Self {
-            implementation_name: format!(
-                "{}.{}.{}{}",
-                py.version_info().major,
-                py.version_info().minor,
-                py.version_info().patch,
-                py.version_info().suffix.unwrap_or_default()
-            ),
+            implementation_name: name,
             implementation_version,
             os_name: os.getattr("name")?.extract()?,
             platform_machine: platform.getattr("machine")?.call0()?.extract()?,
