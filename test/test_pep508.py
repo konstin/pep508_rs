@@ -1,4 +1,7 @@
+from collections import namedtuple
 import pytest
+from unittest import mock
+
 from pep508_rs import Requirement, MarkerEnvironment, Pep508Error, VersionSpecifier
 
 
@@ -33,7 +36,8 @@ def test_marker():
         "numpy; extra == 'science' or extra == 'arrays'"
     ).evaluate_markers(env, ["science"])
 
-def test_marker_values():
+
+def check_marker_values():
     import sys
     import os
     import platform
@@ -57,6 +61,27 @@ def test_marker_values():
     assert env.python_full_version.string == platform.python_version()
     assert env.python_version.string == f"{lib.major}.{lib.minor}"
     assert env.sys_platform == sys.platform
+
+
+class FakeVersionInfo(
+    namedtuple("FakeVersionInfo", ["major", "minor", "micro", "releaselevel", "serial"])
+):
+    pass
+
+
+def test_marker_values_on_final_release():
+    fake_version = FakeVersionInfo(3, 10, 11, "final", 0)
+    with mock.patch("sys.implementation.version", fake_version):
+        check_marker_values()
+
+    check_marker_values()
+
+
+def test_marker_values_on_release_candidate():
+    fake_version = FakeVersionInfo(3, 10, 11, "rc", 1)
+    with mock.patch("sys.implementation.version", fake_version):
+        check_marker_values()
+
 
 def test_errors():
     with pytest.raises(
