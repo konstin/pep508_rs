@@ -36,7 +36,7 @@ jobs:
       - name: Build wheels - universal2
         uses: PyO3/maturin-action@v1
         with:
-          args: --release --strip --universal2 --out dist
+          args: --release --strip --target --target universal2-apple-darwin --out dist
         env:
           RUSTFLAGS: "-C link-arg=-undefined -C link-arg=dynamic_lookup"
       - name: Upload wheels
