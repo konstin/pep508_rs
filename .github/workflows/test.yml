@@ -27,9 +27,9 @@ jobs:
           components: clippy, rustfmt
       - uses: Swatinem/rust-cache@v2
       - name: Ruff check
-        run: pipx run ruff<0.2.0 check --output-format github .
+        run: pipx run "ruff<0.2.0" check --output-format github .
       - name: Ruff format
-        run: pipx run ruff<0.2.0 format --diff .
+        run: pipx run "ruff<0.2.0" format --diff .
       - name: Rustfmt
         run: cargo fmt --all -- --check
       - name: Clippy (pure rust)
