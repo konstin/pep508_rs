@@ -27,7 +27,7 @@ jobs:
           components: clippy, rustfmt
       - uses: Swatinem/rust-cache@v2
       - name: Ruff
-        run: pipx run ruff check --format github .
+        run: pipx run ruff<0.2.0 check --output-format github .
       - name: black
         run: pipx run black --check .
       - name: Rustfmt
