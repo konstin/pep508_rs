@@ -235,6 +235,7 @@ dependencies = [
  "pyo3",
  "rkyv",
  "serde",
+ "tracing",
  "unicode-width",
  "unscanny",
 ]

@@ -21,7 +21,6 @@ use std::collections::HashSet;
 use std::fmt::{Display, Formatter};
 use std::ops::Deref;
 use std::str::FromStr;
-use tracing::warn;
 
 /// Ways in which marker evaluation can fail
 #[derive(Debug, Eq, Hash, Ord, PartialOrd, PartialEq, Clone, Copy)]
@@ -942,8 +941,10 @@ impl FromStr for MarkerTree {
 impl MarkerTree {
     /// Does this marker apply in the given environment?
     pub fn evaluate(&self, env: &MarkerEnvironment, extras: &[ExtraName]) -> bool {
-        let mut reporter = |_kind, message, _marker_expression: &MarkerExpression| {
-            warn!("{}", message);
+        let mut reporter = |_kind, _message, _marker_expression: &MarkerExpression| {
+            #[cfg(feature = "tracing")] {
+                tracing::warn!("{}", _message);
+            }
         };
         self.report_deprecated_options(&mut reporter);
         match self {
@@ -1345,7 +1346,6 @@ mod test {
     use crate::marker::{MarkerEnvironment, StringVersion};
     use crate::{MarkerExpression, MarkerOperator, MarkerTree, MarkerValue, MarkerValueString};
     use indoc::indoc;
-    use log::Level;
     use std::str::FromStr;
 
     fn assert_err(input: &str, error: &str) {
@@ -1441,6 +1441,7 @@ mod test {
     }
 
     #[test]
+    #[cfg(feature = "tracing")]
     fn warnings() {
         let env37 = env37();
         testing_logger::setup();
@@ -1451,7 +1452,7 @@ mod test {
                 captured_logs[0].body,
                 "Comparing two markers with each other doesn't make any sense, evaluating to false"
             );
-            assert_eq!(captured_logs[0].level, Level::Warn);
+            assert_eq!(captured_logs[0].level, log::Level::Warn);
             assert_eq!(captured_logs.len(), 1);
         });
         let non_pep440 = MarkerTree::from_str("python_version >= '3.9.'").unwrap();
@@ -1463,7 +1464,7 @@ mod test {
                  evaluating to false: after parsing 3.9, found \".\" after it, \
                  which is not part of a valid version"
             );
-            assert_eq!(captured_logs[0].level, Level::Warn);
+            assert_eq!(captured_logs[0].level, log::Level::Warn);
             assert_eq!(captured_logs.len(), 1);
         });
         let string_string = MarkerTree::from_str("'b' >= 'a'").unwrap();
@@ -1473,7 +1474,7 @@ mod test {
                 captured_logs[0].body,
                 "Comparing two quoted strings with each other doesn't make sense: 'b' >= 'a', evaluating to false"
             );
-            assert_eq!(captured_logs[0].level, Level::Warn);
+            assert_eq!(captured_logs[0].level, log::Level::Warn);
             assert_eq!(captured_logs.len(), 1);
         });
         let string_string = MarkerTree::from_str(r#"os.name == 'posix' and platform.machine == 'x86_64' and platform.python_implementation == 'CPython' and 'Ubuntu' in platform.version and sys.platform == 'linux'"#).unwrap();
@@ -1482,7 +1483,7 @@ mod test {
             let messages: Vec<_> = captured_logs
                 .iter()
                 .map(|message| {
-                    assert_eq!(message.level, Level::Warn);
+                    assert_eq!(message.level, log::Level::Warn);
                     &message.body
                 })
                 .collect();

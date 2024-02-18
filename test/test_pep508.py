@@ -85,13 +85,14 @@ def test_warnings(caplog):
     Requirement("numpy; python_version >= '3.9.'").evaluate_markers(env, [])
     assert caplog.messages == [
         "Expected PEP 440 version to compare with python_version, found '3.9.', "
-        "evaluating to false: Version `3.9.` doesn't match PEP 440 rules"
+        'evaluating to false: after parsing 3.9, found "." after it, which is not '
+        "part of a valid version",
     ]
     caplog.clear()
     # pickleshare 0.7.5
     Requirement("numpy; python_version in '2.6 2.7 3.2 3.3'").evaluate_markers(env, [])
     assert caplog.messages == [
-        "Expected PEP 440 version to compare with python_version, "
-        "found '2.6 2.7 3.2 3.3', "
-        "evaluating to false: Version `2.6 2.7 3.2 3.3` doesn't match PEP 440 rules"
+        "Expected PEP 440 version to compare with python_version, found '2.6 2.7 "
+        '3.2 3.3\', evaluating to false: after parsing 2.6, found "2.7 3.2 3.3" '
+        "after it, which is not part of a valid version",
     ]

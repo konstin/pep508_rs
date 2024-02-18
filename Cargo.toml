@@ -24,9 +24,9 @@ rkyv = { version = "0.7.44", features = ["strict"], optional = true }
 serde = { version = "1.0.196", features = ["derive"], optional = true }
 serde_json = { version = "1.0.113", optional = true }
 thiserror = "1.0.57"
-tracing = { version = "0.1.40", features = ["log"] }
+tracing = { version = "0.1.40", optional = true }
 unicode-width = "0.1.11"
-url = { version = "2.5.0", features = ["serde"] }
+url = { version = "2.5.0" }
 urlencoding = "2.1.3"
 
 [dev-dependencies]
@@ -36,9 +36,10 @@ serde_json = "1.0.113"
 testing_logger = "0.1.1"
 
 [features]
-pyo3 = ["dep:pyo3", "pep440_rs/pyo3", "pyo3-log"]
+pyo3 = ["dep:pyo3", "pep440_rs/pyo3", "pyo3-log", "tracing", "tracing/log"]
 rkyv = ["dep:rkyv", "pep440_rs/rkyv"]
-serde = ["dep:serde", "pep440_rs/serde"]
+serde = ["dep:serde", "pep440_rs/serde", "url/serde"]
+tracing = ["dep:tracing", "pep440_rs/tracing"]
 # PEP 508 allows only URLs such as `foo @ https://example.org/foo` or `foo @ file:///home/ferris/foo`, and
 # arguably does not allow relative paths in file URLs (`foo @ file://./foo`,
 # `foo @ file:foo-3.0.0-py3-none-any.whl`, `foo @ file://foo-3.0.0-py3-none-any.whl`), as they are not part of the
