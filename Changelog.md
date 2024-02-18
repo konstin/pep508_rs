@@ -3,3 +3,4 @@
 * Package and extra names are now validated and normalized.
 * Updated `pep440_rs` to 0.5.0.
 * [rkyv](https://github.com/rkyv/rkyv) support.
+* `tracing` is now a separate feature.
