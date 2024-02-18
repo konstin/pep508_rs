@@ -942,7 +942,8 @@ impl MarkerTree {
     /// Does this marker apply in the given environment?
     pub fn evaluate(&self, env: &MarkerEnvironment, extras: &[ExtraName]) -> bool {
         let mut reporter = |_kind, _message, _marker_expression: &MarkerExpression| {
-            #[cfg(feature = "tracing")] {
+            #[cfg(feature = "tracing")]
+            {
                 tracing::warn!("{}", _message);
             }
         };
