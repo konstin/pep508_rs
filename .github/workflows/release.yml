@@ -11,8 +11,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
-      - name: Push to crates.io
+      - name: Publish to crates.io
         env:
           CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
         run: cargo publish
@@ -21,24 +20,19 @@ jobs:
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-python@v4
+      - uses: actions/setup-python@v5
         with:
           python-version: 3.9
           architecture: x64
-      - uses: dtolnay/rust-toolchain@stable
       - name: Build wheels - x86_64
         uses: PyO3/maturin-action@v1
         with:
           target: x86_64
           args: --release --strip --out dist --sdist
-        env:
-          RUSTFLAGS: "-C link-arg=-undefined -C link-arg=dynamic_lookup"
       - name: Build wheels - universal2
         uses: PyO3/maturin-action@v1
         with:
-          args: --release --strip --target --target universal2-apple-darwin --out dist
-        env:
-          RUSTFLAGS: "-C link-arg=-undefined -C link-arg=dynamic_lookup"
+          args: --release --strip --target universal2-apple-darwin --out dist
       - name: Upload wheels
         uses: actions/upload-artifact@v3
         with:
@@ -49,10 +43,9 @@ jobs:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-python@v4
+      - uses: actions/setup-python@v5
         with:
           python-version: 3.9
-      - uses: dtolnay/rust-toolchain@stable
       - name: Build wheels
         uses: PyO3/maturin-action@v1
         with:
@@ -70,7 +63,7 @@ jobs:
         target: [ x86_64 ]
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-python@v4
+      - uses: actions/setup-python@v5
         with:
           python-version: 3.9
           architecture: x64
@@ -92,7 +85,7 @@ jobs:
         target: [ aarch64, armv7, s390x, ppc64le, ppc64 ]
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-python@v4
+      - uses: actions/setup-python@v5
         with:
           python-version: 3.9
       - name: Build wheels
@@ -116,7 +109,7 @@ jobs:
           - i686-unknown-linux-musl
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-python@v4
+      - uses: actions/setup-python@v5
         with:
           python-version: 3.9
           architecture: x64
@@ -143,7 +136,7 @@ jobs:
             arch: armv7
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-python@v4
+      - uses: actions/setup-python@v5
         with:
           python-version: 3.9
       - name: Build wheels

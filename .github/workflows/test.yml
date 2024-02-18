@@ -6,33 +6,43 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
-  test:
-    strategy:
-      matrix:
-        os: [ ubuntu-latest, windows-latest, macos-latest ]
-    runs-on: ${{ matrix.os }}
-    steps:
-      - uses: actions/checkout@v4
-      - run: rustup toolchain install stable --profile minimal
-      - uses: Swatinem/rust-cache@v2
-      - name: Run tests
-        run: cargo test
-
   lint:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
-        with:
-          components: clippy, rustfmt
+      - uses: actions/setup-python@v5
+      - name: Install clippy and rustfmt
+        run: rustup component add clippy rustfmt
       - uses: Swatinem/rust-cache@v2
-      - name: Ruff check
-        run: pipx run "ruff<0.2.0" check --output-format github .
-      - name: Ruff format
-        run: pipx run "ruff<0.2.0" format --diff .
+      - name: Ruff
+        run: pipx run ruff check
       - name: Rustfmt
         run: cargo fmt --all -- --check
       - name: Clippy (pure rust)
         run: cargo clippy --tests -- -D warnings
       - name: Clippy (pyo3)
         run: cargo clippy --tests --all-features -- -D warnings
+
+  test-rust:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo test
+
+  test-python:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+      - uses: Swatinem/rust-cache@v2
+      - name: Install pytest
+        run: |
+          pip install --upgrade pip
+          pip install pytest
+      - uses: PyO3/maturin-action@v1
+        with:
+          command: build
+      - name: Install pep440_rs
+        run: pip install --no-index --find-links target/wheels pep440_rs
+      - run: pytest
