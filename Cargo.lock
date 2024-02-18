@@ -229,7 +229,8 @@ dependencies = [
 [[package]]
 name = "pep440_rs"
 version = "0.5.0"
-source = "git+https://github.com/konstin/pep440-rs#ae6224aab36517a6e8d7ed6608e1b114287c76c3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "15efd4d885c29126cc93e12af3087896e2518bd5ca0fb328c19c4ef9cecfa8be"
 dependencies = [
  "once_cell",
  "pyo3",
@@ -242,7 +243,7 @@ dependencies = [
 
 [[package]]
 name = "pep508_rs"
-version = "0.4.0"
+version = "0.4.1"
 dependencies = [
  "derivative",
  "indoc",

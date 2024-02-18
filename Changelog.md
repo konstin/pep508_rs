@@ -1,3 +1,7 @@
+# v0.4.1
+
+* CI fixes, mac os builds are temporarily disabled.
+
 # v0.4.0
 
 * Package and extra names are now validated and normalized.

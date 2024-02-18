@@ -16,28 +16,29 @@ jobs:
           CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
         run: cargo publish
 
-  macos:
-    runs-on: macos-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: 3.9
-          architecture: x64
-      - name: Build wheels - x86_64
-        uses: PyO3/maturin-action@v1
-        with:
-          target: x86_64
-          args: --release --strip --out dist --sdist
-      - name: Build wheels - universal2
-        uses: PyO3/maturin-action@v1
-        with:
-          args: --release --strip --target universal2-apple-darwin --out dist
-      - name: Upload wheels
-        uses: actions/upload-artifact@v3
-        with:
-          name: wheels
-          path: dist
+  # :(
+  #macos:
+  #  runs-on: macos-latest
+  #  steps:
+  #    - uses: actions/checkout@v4
+  #    - uses: actions/setup-python@v5
+  #      with:
+  #        python-version: 3.9
+  #        architecture: x64
+  #    - name: Build wheels - x86_64
+  #      uses: PyO3/maturin-action@v1
+  #      with:
+  #        target: x86_64
+  #        args: --release --strip --out dist --sdist
+  #    - name: Build wheels - universal2
+  #      uses: PyO3/maturin-action@v1
+  #      with:
+  #        args: --release --strip --target universal2-apple-darwin --out dist
+  #    - name: Upload wheels
+  #      uses: actions/upload-artifact@v3
+  #      with:
+  #        name: wheels
+  #        path: dist
 
   windows:
     runs-on: windows-latest
