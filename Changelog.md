@@ -1,3 +1,7 @@
+# 0.5.0
+
+* Update to pyo3 0.21
+
 # v0.4.2
 
 * CI fixes, mac os builds are temporarily disabled.

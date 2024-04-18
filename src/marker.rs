@@ -13,7 +13,8 @@ use crate::{Cursor, ExtraName, Pep508Error, Pep508ErrorSource};
 use pep440_rs::{Version, VersionPattern, VersionSpecifier};
 #[cfg(feature = "pyo3")]
 use pyo3::{
-    basic::CompareOp, exceptions::PyValueError, pyclass, pymethods, PyResult, Python, prelude::PyAnyMethods,
+    basic::CompareOp, exceptions::PyValueError, prelude::PyAnyMethods, pyclass, pymethods,
+    PyResult, Python,
 };
 #[cfg(feature = "serde")]
 use serde::{de, Deserialize, Deserializer, Serialize, Serializer};
@@ -257,17 +258,17 @@ impl FromStr for MarkerOperator {
             "~=" => Self::TildeEqual,
             "in" => Self::In,
             not_space_in
-            if not_space_in
-                // start with not
-                .strip_prefix("not")
-                // ends with in
-                .and_then(|space_in| space_in.strip_suffix("in"))
-                // and has only whitespace in between
-                .map(|space| !space.is_empty() && space.trim().is_empty())
-                .unwrap_or_default() =>
-                {
-                    Self::NotIn
-                }
+                if not_space_in
+                    // start with not
+                    .strip_prefix("not")
+                    // ends with in
+                    .and_then(|space_in| space_in.strip_suffix("in"))
+                    // and has only whitespace in between
+                    .map(|space| !space.is_empty() && space.trim().is_empty())
+                    .unwrap_or_default() =>
+            {
+                Self::NotIn
+            }
             other => return Err(format!("Invalid comparator: {other}")),
         };
         Ok(value)
@@ -320,8 +321,8 @@ impl Display for StringVersion {
 #[cfg(feature = "serde")]
 impl Serialize for StringVersion {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-        where
-            S: Serializer,
+    where
+        S: Serializer,
     {
         serializer.serialize_str(&self.string)
     }
@@ -330,8 +331,8 @@ impl Serialize for StringVersion {
 #[cfg(feature = "serde")]
 impl<'de> Deserialize<'de> for StringVersion {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-        where
-            D: Deserializer<'de>,
+    where
+        D: Deserializer<'de>,
     {
         let string = String::deserialize(deserializer)?;
         Self::from_str(&string).map_err(de::Error::custom)
@@ -783,7 +784,7 @@ impl MarkerExpression {
                         .any(|l_version| specifier.contains(l_version));
                     Some(compatible)
                 })()
-                    .unwrap_or(true)
+                .unwrap_or(true)
             }
             (
                 MarkerValue::QuotedString(l_string),
@@ -811,7 +812,7 @@ impl MarkerExpression {
 
                     Some(compatible)
                 })()
-                    .unwrap_or(true)
+                .unwrap_or(true)
             }
             _ => true,
         }
@@ -1429,7 +1430,7 @@ mod test {
         let marker2 = MarkerTree::from_str(
             "os_name == \"linux\" or python_version == \"3.7\" and sys_platform == \"win32\"",
         )
-            .unwrap();
+        .unwrap();
         let marker3 = MarkerTree::from_str(
             "python_version == \"2.7\" and (sys_platform == \"win32\" or sys_platform == \"linux\")",
         ).unwrap();
@@ -1593,6 +1594,6 @@ mod test {
                 "sys_platform": "linux"
             }"##,
         )
-            .unwrap();
+        .unwrap();
     }
 }
