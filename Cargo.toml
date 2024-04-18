@@ -16,24 +16,28 @@ crate-type = ["cdylib", "rlib"]
 [dependencies]
 derivative = "2.2.0"
 once_cell = "1.19.0"
-pep440_rs = "0.5.0"
-pyo3 = { version = "0.20.2", optional = true, features = ["abi3", "extension-module"] }
+pep440_rs = "0.6.0"
+pyo3 = { version = "0.21.1", optional = true, features = ["abi3", "extension-module"] }
 pyo3-log = { version = "0.9.0", optional = true }
-regex = "1.10.3"
+regex = "1.10.4"
 rkyv = { version = "0.7.44", features = ["strict"], optional = true }
-serde = { version = "1.0.196", features = ["derive"], optional = true }
-serde_json = { version = "1.0.113", optional = true }
-thiserror = "1.0.57"
+serde = { version = "1.0.197", features = ["derive"], optional = true }
+serde_json = { version = "1.0.115", optional = true }
+thiserror = "1.0.58"
 tracing = { version = "0.1.40", optional = true }
 unicode-width = "0.1.11"
-url = { version = "2.5.0" }
+url = "2.5.0"
 urlencoding = "2.1.3"
 
 [dev-dependencies]
-indoc = "2.0.4"
-log = "0.4.20"
-serde_json = "1.0.113"
+indoc = "2.0.5"
+log = "0.4.21"
+serde_json = "1.0.115"
 testing_logger = "0.1.1"
+
+[patch.crates-io]
+# pyo3 0.21 PR
+pyo3-log = { git = "https://github.com/a1phyr/pyo3-log", rev = "76ff388163dd1100eb70ba164d59a42795829bdb" }
 
 [features]
 pyo3 = ["dep:pyo3", "pep440_rs/pyo3", "pyo3-log", "tracing", "tracing/log"]

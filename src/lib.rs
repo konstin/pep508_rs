@@ -15,6 +15,16 @@
 
 #![warn(missing_docs)]
 
+#[cfg(feature = "pyo3")]
+use pep440_rs::PyVersion;
+use pep440_rs::{Version, VersionSpecifier, VersionSpecifiers};
+#[cfg(feature = "pyo3")]
+use pyo3::{
+    create_exception, exceptions::PyNotImplementedError, pyclass, pyclass::CompareOp, pymethods,
+    pymodule, types::PyModule, Bound, IntoPy, PyObject, PyResult, Python,
+};
+#[cfg(feature = "serde")]
+use serde::{de, Deserialize, Deserializer, Serialize, Serializer};
 use std::borrow::Cow;
 #[cfg(feature = "pyo3")]
 use std::collections::hash_map::DefaultHasher;
@@ -24,17 +34,6 @@ use std::fmt::{Display, Formatter};
 use std::hash::{Hash, Hasher};
 use std::path::Path;
 use std::str::{Chars, FromStr};
-
-#[cfg(feature = "pyo3")]
-use pep440_rs::PyVersion;
-use pep440_rs::{Version, VersionSpecifier, VersionSpecifiers};
-#[cfg(feature = "pyo3")]
-use pyo3::{
-    create_exception, exceptions::PyNotImplementedError, pyclass, pyclass::CompareOp, pymethods,
-    pymodule, types::PyModule, IntoPy, PyObject, PyResult, Python,
-};
-#[cfg(feature = "serde")]
-use serde::{de, Deserialize, Deserializer, Serialize, Serializer};
 use thiserror::Error;
 use unicode_width::UnicodeWidthChar;
 
@@ -1006,7 +1005,7 @@ fn parse(cursor: &mut Cursor, working_dir: Option<&Path>) -> Result<Requirement,
 #[cfg(feature = "pyo3")]
 #[pymodule]
 #[pyo3(name = "pep508_rs")]
-pub fn python_module(py: Python<'_>, m: &PyModule) -> PyResult<()> {
+pub fn python_module(py: Python<'_>, m: &Bound<PyModule>) -> PyResult<()> {
     // Allowed to fail if we embed this module in another
     #[allow(unused_must_use)]
     {
@@ -1018,7 +1017,7 @@ pub fn python_module(py: Python<'_>, m: &PyModule) -> PyResult<()> {
 
     m.add_class::<Requirement>()?;
     m.add_class::<MarkerEnvironment>()?;
-    m.add("Pep508Error", py.get_type::<PyPep508Error>())?;
+    m.add("Pep508Error", py.get_type_bound::<PyPep508Error>())?;
     Ok(())
 }
 
