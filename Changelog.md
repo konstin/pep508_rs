@@ -1,6 +1,7 @@
 # 0.5.0
 
 * Update to pyo3 0.21
+* Update to pyo3-log 0.1.0
 
 # v0.4.2
 
