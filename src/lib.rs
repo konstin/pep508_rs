@@ -15,6 +15,7 @@
 
 #![warn(missing_docs)]
 
+use origin::RequirementOrigin;
 #[cfg(feature = "pyo3")]
 use pep440_rs::PyVersion;
 use pep440_rs::{Version, VersionSpecifier, VersionSpecifiers};
@@ -46,6 +47,7 @@ pub use verbatim_url::{split_scheme, VerbatimUrl};
 
 mod marker;
 mod normalize;
+mod origin;
 mod verbatim_url;
 
 /// Error with a span attached. Not that those aren't `String` but `Vec<char>` indices.
@@ -137,6 +139,19 @@ pub struct Requirement {
     /// `requests [security,tests] >= 2.8.1, == 2.8.* ; python_version > "3.8"`.
     /// Those are a nested and/or tree
     pub marker: Option<MarkerTree>,
+    /// The source file containing the requirement.
+    pub origin: Option<RequirementOrigin>,
+}
+
+impl Requirement {
+    /// Set the source file containing the requirement.
+    #[must_use]
+    pub fn with_origin(self, origin: RequirementOrigin) -> Self {
+        Self {
+            origin: Some(origin),
+            ..self
+        }
+    }
 }
 
 impl Display for Requirement {
@@ -993,6 +1008,7 @@ fn parse(cursor: &mut Cursor, working_dir: Option<&Path>) -> Result<Requirement,
         extras,
         version_or_url: requirement_kind,
         marker,
+        origin: None,
     })
 }
 
@@ -1126,6 +1142,7 @@ mod tests {
                 operator: MarkerOperator::LessThan,
                 r_value: MarkerValue::QuotedString("2.7".to_string()),
             })),
+            origin: None,
         };
         assert_eq!(requests, expected);
     }
@@ -1291,6 +1308,7 @@ mod tests {
             extras: vec![],
             marker: None,
             version_or_url: Some(VersionOrUrl::Url(VerbatimUrl::from_str(url).unwrap())),
+            origin: None,
         };
         assert_eq!(pip_url, expected);
     }
