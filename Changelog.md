@@ -1,3 +1,7 @@
+# 0.6.0
+
+* Added `origin` to `Requirement`
+
 # 0.5.0
 
 * Update to pyo3 0.21
