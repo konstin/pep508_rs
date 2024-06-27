@@ -844,7 +844,7 @@ fn parse_specifier(
 /// Such as `>=1.19,<2.0`, either delimited by the end of the specifier or a `;` for the marker part
 ///
 /// ```text
-/// version_one (wsp* ',' version_one)*
+/// version_one (wsp* ',' version_one)* (wsp* ',' wsp*)?
 /// ```
 fn parse_version_specifier(cursor: &mut Cursor) -> Result<Option<VersionOrUrl>, Pep508Error> {
     let mut start = cursor.pos();
@@ -860,9 +860,11 @@ fn parse_version_specifier(cursor: &mut Cursor) -> Result<Option<VersionOrUrl>, 
                 start = end + 1;
             }
             Some((_, ';')) | None => {
-                let end = cursor.pos();
-                let specifier = parse_specifier(cursor, &buffer, start, end)?;
-                specifiers.push(specifier);
+                if buffer.chars().any(|c| !c.is_whitespace()) {
+                    let end = cursor.pos();
+                    let specifier = parse_specifier(cursor, &buffer, start, end)?;
+                    specifiers.push(specifier);
+                }
                 break Some(VersionOrUrl::VersionSpecifier(
                     specifiers.into_iter().collect(),
                 ));
@@ -1169,6 +1171,13 @@ mod tests {
     fn versions_double() {
         let numpy = Requirement::from_str("numpy >=1.19, <2.0 ").unwrap();
         assert_eq!(numpy.name.as_ref(), "numpy");
+    }
+
+    #[test]
+    fn versions_trailing_comma() {
+        let with_trailing_comma = Requirement::from_str("numpy >=1.19, ").unwrap();
+        let without_trailing_comma = Requirement::from_str("numpy >=1.19").unwrap();
+        assert_eq!(with_trailing_comma, without_trailing_comma);
     }
 
     #[test]
