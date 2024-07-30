@@ -1024,6 +1024,7 @@ fn parse(cursor: &mut Cursor, working_dir: Option<&Path>) -> Result<Requirement,
 #[pymodule]
 #[pyo3(name = "pep508_rs")]
 pub fn python_module(py: Python<'_>, m: &Bound<PyModule>) -> PyResult<()> {
+    use pyo3::prelude::*;
     // Allowed to fail if we embed this module in another
     #[allow(unused_must_use)]
     {
