@@ -204,7 +204,7 @@ dependencies = [
 
 [[package]]
 name = "pep508_rs"
-version = "0.6.0"
+version = "0.6.1"
 dependencies = [
  "derivative",
  "indoc",
