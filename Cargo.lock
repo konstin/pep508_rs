@@ -189,8 +189,9 @@ checksum = "3fdb12b2476b595f9358c5161aa467c2438859caa136dec86c26fdd2efe17b92"
 
 [[package]]
 name = "pep440_rs"
-version = "0.6.0"
-source = "git+https://github.com/jelmer/pep440-rs?branch=pyo3-0.22#878e379ccda7d6d9c3b3ebf914cea60015bbf64e"
+version = "0.6.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4eeee7a7220542b3aa2fd91b53a01ad99302c2ffcd2aa3c1766ff076039cc0b4"
 dependencies = [
  "once_cell",
  "pyo3",
