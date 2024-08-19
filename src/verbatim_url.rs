@@ -1,5 +1,6 @@
 use std::borrow::Cow;
 use std::fmt::Debug;
+use std::hash::Hash;
 use std::ops::Deref;
 use std::path::{Component, Path, PathBuf};
 
@@ -8,8 +9,7 @@ use regex::Regex;
 use url::Url;
 
 /// A wrapper around [`Url`] that preserves the original string.
-#[derive(Debug, Clone, Eq, derivative::Derivative)]
-#[derivative(PartialEq, Hash)]
+#[derive(Debug, Clone, Eq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct VerbatimUrl {
     /// The parsed URL.
@@ -22,9 +22,19 @@ pub struct VerbatimUrl {
     )]
     url: Url,
     /// The URL as it was provided by the user.
-    #[derivative(PartialEq = "ignore")]
-    #[derivative(Hash = "ignore")]
     given: Option<String>,
+}
+
+impl Hash for VerbatimUrl {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        self.url.hash(state);
+    }
+}
+
+impl PartialEq for VerbatimUrl {
+    fn eq(&self, other: &Self) -> bool {
+        self.url == other.url
+    }
 }
 
 impl VerbatimUrl {
