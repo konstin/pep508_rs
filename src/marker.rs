@@ -11,8 +11,6 @@
 
 use crate::{Cursor, ExtraName, Pep508Error, Pep508ErrorSource};
 use pep440_rs::{Version, VersionPattern, VersionSpecifier};
-#[cfg(feature = "pyo3")]
-use pyo3::{exceptions::PyValueError, prelude::PyAnyMethods, pyclass, pymethods, PyResult, Python};
 #[cfg(feature = "serde")]
 use serde::{de, Deserialize, Deserializer, Serialize, Serializer};
 use std::collections::HashSet;
@@ -22,10 +20,6 @@ use std::str::FromStr;
 
 /// Ways in which marker evaluation can fail
 #[derive(Debug, Eq, Hash, Ord, PartialOrd, PartialEq, Clone, Copy)]
-#[cfg_attr(
-    feature = "pyo3",
-    pyclass(module = "pep508", frozen, hash, ord, eq, eq_int)
-)]
 pub enum MarkerWarningKind {
     /// Using an old name from PEP 345 instead of the modern equivalent
     /// <https://peps.python.org/pep-0345/#environment-markers>
@@ -279,7 +273,6 @@ impl Display for MarkerOperator {
 
 /// Helper type with a [Version] and its original text
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
-#[cfg_attr(feature = "pyo3", pyclass(get_all, module = "pep508"))]
 pub struct StringVersion {
     /// Original unchanged string
     pub string: String,
@@ -340,7 +333,6 @@ impl Deref for StringVersion {
 /// Some are `(String, Version)` because we have to support version comparison
 #[allow(missing_docs, clippy::unsafe_derive_deserialize)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
-#[cfg_attr(feature = "pyo3", pyclass(get_all, module = "pep508"))]
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub struct MarkerEnvironment {
     pub implementation_name: String,
@@ -387,135 +379,6 @@ impl MarkerEnvironment {
                 &self.sys_platform
             }
         }
-    }
-}
-
-#[cfg(feature = "pyo3")]
-#[pymethods]
-impl MarkerEnvironment {
-    /// Construct your own marker environment
-    #[new]
-    #[pyo3(signature = (*,
-    implementation_name,
-    implementation_version,
-    os_name,
-    platform_machine,
-    platform_python_implementation,
-    platform_release,
-    platform_system,
-    platform_version,
-    python_full_version,
-    python_version,
-    sys_platform
-    ))]
-    #[allow(clippy::too_many_arguments)]
-    fn py_new(
-        implementation_name: &str,
-        implementation_version: &str,
-        os_name: &str,
-        platform_machine: &str,
-        platform_python_implementation: &str,
-        platform_release: &str,
-        platform_system: &str,
-        platform_version: &str,
-        python_full_version: &str,
-        python_version: &str,
-        sys_platform: &str,
-    ) -> PyResult<Self> {
-        let implementation_version =
-            StringVersion::from_str(implementation_version).map_err(|err| {
-                PyValueError::new_err(format!(
-                    "implementation_version is not a valid PEP440 version: {err}"
-                ))
-            })?;
-        let python_full_version = StringVersion::from_str(python_full_version).map_err(|err| {
-            PyValueError::new_err(format!(
-                "python_full_version is not a valid PEP440 version: {err}"
-            ))
-        })?;
-        let python_version = StringVersion::from_str(python_version).map_err(|err| {
-            PyValueError::new_err(format!(
-                "python_version is not a valid PEP440 version: {err}"
-            ))
-        })?;
-        Ok(Self {
-            implementation_name: implementation_name.to_string(),
-            implementation_version,
-            os_name: os_name.to_string(),
-            platform_machine: platform_machine.to_string(),
-            platform_python_implementation: platform_python_implementation.to_string(),
-            platform_release: platform_release.to_string(),
-            platform_system: platform_system.to_string(),
-            platform_version: platform_version.to_string(),
-            python_full_version,
-            python_version,
-            sys_platform: sys_platform.to_string(),
-        })
-    }
-
-    /// Query the current python interpreter to get the correct marker value
-    #[staticmethod]
-    fn current(py: Python<'_>) -> PyResult<Self> {
-        let os = py.import_bound("os")?;
-        let platform = py.import_bound("platform")?;
-        let sys = py.import_bound("sys")?;
-        let python_version_tuple: (String, String, String) = platform
-            .getattr("python_version_tuple")?
-            .call0()?
-            .extract()?;
-
-        // See pseudocode at
-        // https://packaging.python.org/en/latest/specifications/dependency-specifiers/#environment-markers
-        let name = sys.getattr("implementation")?.getattr("name")?.extract()?;
-        let info = sys.getattr("implementation")?.getattr("version")?;
-        let kind = info.getattr("releaselevel")?.extract::<String>()?;
-        let implementation_version: String = format!(
-            "{}.{}.{}{}",
-            info.getattr("major")?.extract::<usize>()?,
-            info.getattr("minor")?.extract::<usize>()?,
-            info.getattr("micro")?.extract::<usize>()?,
-            if kind == "final" {
-                String::new()
-            } else {
-                format!("{}{}", kind, info.getattr("serial")?.extract::<usize>()?)
-            }
-        );
-        let python_full_version: String = platform.getattr("python_version")?.call0()?.extract()?;
-        let python_version = format!("{}.{}", python_version_tuple.0, python_version_tuple.1);
-
-        // This is not written down in PEP 508, but it's the only reasonable assumption to make
-        let implementation_version =
-            StringVersion::from_str(&implementation_version).map_err(|err| {
-                PyValueError::new_err(format!(
-                    "Broken python implementation, implementation_version is not a valid PEP440 version: {err}"
-                ))
-            })?;
-        let python_full_version = StringVersion::from_str(&python_full_version).map_err(|err| {
-            PyValueError::new_err(format!(
-                "Broken python implementation, python_full_version is not a valid PEP440 version: {err}"
-            ))
-        })?;
-        let python_version = StringVersion::from_str(&python_version).map_err(|err| {
-            PyValueError::new_err(format!(
-                "Broken python implementation, python_version is not a valid PEP440 version: {err}"
-            ))
-        })?;
-        Ok(Self {
-            implementation_name: name,
-            implementation_version,
-            os_name: os.getattr("name")?.extract()?,
-            platform_machine: platform.getattr("machine")?.call0()?.extract()?,
-            platform_python_implementation: platform
-                .getattr("python_implementation")?
-                .call0()?
-                .extract()?,
-            platform_release: platform.getattr("release")?.call0()?.extract()?,
-            platform_system: platform.getattr("system")?.call0()?.extract()?,
-            platform_version: platform.getattr("version")?.call0()?.extract()?,
-            python_full_version,
-            python_version,
-            sys_platform: sys.getattr("platform")?.extract()?,
-        })
     }
 }
 

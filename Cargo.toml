@@ -1,6 +1,6 @@
 [package]
 name = "pep508_rs"
-version = "0.6.1"
+version = "0.7.0"
 description = "A library for python dependency specifiers, better known as PEP 508"
 edition = "2021"
 include = ["/src", "Changelog.md", "License-Apache", "License-BSD", "Readme.md", "pyproject.toml"]
@@ -24,7 +24,7 @@ serde = { version = "1.0.198", features = ["derive"], optional = true }
 serde_json = { version = "1.0.116", optional = true }
 thiserror = "1.0.59"
 tracing = { version = "0.1.40", optional = true }
-unicode-width = "0.1.11"
+unicode-width = "0.2.0"
 url = "2.5.0"
 urlencoding = "2.1.3"
 

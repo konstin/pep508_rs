@@ -16,23 +16,12 @@
 #![warn(missing_docs)]
 
 use origin::RequirementOrigin;
-#[cfg(feature = "pyo3")]
-use pep440_rs::PyVersion;
 use pep440_rs::{Version, VersionSpecifier, VersionSpecifiers};
-#[cfg(feature = "pyo3")]
-use pyo3::{
-    create_exception, exceptions::PyNotImplementedError, pyclass, pyclass::CompareOp, pymethods,
-    pymodule, types::PyModule, Bound, IntoPy, PyObject, PyResult, Python,
-};
 #[cfg(feature = "serde")]
 use serde::{de, Deserialize, Deserializer, Serialize, Serializer};
 use std::borrow::Cow;
-#[cfg(feature = "pyo3")]
-use std::collections::hash_map::DefaultHasher;
 use std::collections::HashSet;
 use std::fmt::{Display, Formatter};
-#[cfg(feature = "pyo3")]
-use std::hash::{Hash, Hasher};
 use std::path::Path;
 use std::str::{Chars, FromStr};
 use thiserror::Error;
@@ -113,17 +102,8 @@ impl Display for Pep508Error {
 /// We need this to allow e.g. anyhow's `.context()`
 impl std::error::Error for Pep508Error {}
 
-#[cfg(feature = "pyo3")]
-create_exception!(
-    pep508,
-    PyPep508Error,
-    pyo3::exceptions::PyValueError,
-    "A PEP 508 parser error with span information"
-);
-
 /// A PEP 508 dependency specification
 #[derive(Hash, Debug, Clone, Eq, PartialEq)]
-#[cfg_attr(feature = "pyo3", pyclass(module = "pep508"))]
 pub struct Requirement {
     /// The distribution name such as `numpy` in
     /// `requests [security,tests] >= 2.8.1, == 2.8.* ; python_version > "3.8"`
@@ -212,137 +192,6 @@ impl Serialize for Requirement {
 }
 
 type MarkerWarning = (MarkerWarningKind, String, String);
-
-#[cfg(feature = "pyo3")]
-#[pymethods]
-impl Requirement {
-    /// The distribution name such as `numpy` in
-    /// `requests [security,tests] >= 2.8.1, == 2.8.* ; python_version > "3.8"`
-    #[getter]
-    pub fn name(&self) -> String {
-        self.name.to_string()
-    }
-
-    /// The list of extras such as `security`, `tests` in
-    /// `requests [security,tests] >= 2.8.1, == 2.8.* ; python_version > "3.8"`
-    #[getter]
-    pub fn extras(&self) -> Vec<String> {
-        self.extras.iter().map(ToString::to_string).collect()
-    }
-
-    /// The marker expression such as  `python_version > "3.8"` in
-    /// `requests [security,tests] >= 2.8.1, == 2.8.* ; python_version > "3.8"`
-    #[getter]
-    pub fn marker(&self) -> Option<String> {
-        self.marker.as_ref().map(std::string::ToString::to_string)
-    }
-
-    /// Parses a PEP 440 string
-    #[new]
-    pub fn py_new(requirement: &str) -> PyResult<Self> {
-        Self::from_str(requirement).map_err(|err| PyPep508Error::new_err(err.to_string()))
-    }
-
-    #[getter]
-    fn version_or_url(&self, py: Python<'_>) -> PyObject {
-        match &self.version_or_url {
-            None => py.None(),
-            Some(VersionOrUrl::VersionSpecifier(version_specifier)) => version_specifier
-                .iter()
-                .map(|x| x.clone().into_py(py))
-                .collect::<Vec<PyObject>>()
-                .into_py(py),
-            Some(VersionOrUrl::Url(url)) => url.to_string().into_py(py),
-        }
-    }
-
-    fn __str__(&self) -> String {
-        self.to_string()
-    }
-
-    fn __repr__(&self) -> String {
-        format!(r#""{self}""#)
-    }
-
-    fn __richcmp__(&self, other: &Self, op: CompareOp) -> PyResult<bool> {
-        let err = PyNotImplementedError::new_err("Requirement only supports equality comparisons");
-        match op {
-            CompareOp::Lt => Err(err),
-            CompareOp::Le => Err(err),
-            CompareOp::Eq => Ok(self == other),
-            CompareOp::Ne => Ok(self != other),
-            CompareOp::Gt => Err(err),
-            CompareOp::Ge => Err(err),
-        }
-    }
-
-    fn __hash__(&self) -> u64 {
-        let mut hasher = DefaultHasher::new();
-        self.hash(&mut hasher);
-        hasher.finish()
-    }
-
-    /// Returns whether the markers apply for the given environment
-    #[allow(clippy::needless_pass_by_value)]
-    #[pyo3(name = "evaluate_markers")]
-    pub fn py_evaluate_markers(
-        &self,
-        env: &MarkerEnvironment,
-        extras: Vec<String>,
-    ) -> PyResult<bool> {
-        let extras = extras
-            .into_iter()
-            .map(|extra| ExtraName::from_str(&extra))
-            .collect::<Result<Vec<_>, InvalidNameError>>()
-            .map_err(|err| PyPep508Error::new_err(err.to_string()))?;
-
-        Ok(self.evaluate_markers(env, &extras))
-    }
-
-    /// Returns whether the requirement would be satisfied, independent of environment markers, i.e.
-    /// if there is potentially an environment that could activate this requirement.
-    ///
-    /// Note that unlike [Self::evaluate_markers] this does not perform any checks for bogus
-    /// expressions but will simply return true. As caller you should separately perform a check
-    /// with an environment and forward all warnings.
-    #[allow(clippy::needless_pass_by_value)]
-    #[pyo3(name = "evaluate_extras_and_python_version")]
-    pub fn py_evaluate_extras_and_python_version(
-        &self,
-        extras: HashSet<String>,
-        python_versions: Vec<PyVersion>,
-    ) -> PyResult<bool> {
-        let extras = extras
-            .into_iter()
-            .map(|extra| ExtraName::from_str(&extra))
-            .collect::<Result<HashSet<_>, InvalidNameError>>()
-            .map_err(|err| PyPep508Error::new_err(err.to_string()))?;
-
-        let python_versions = python_versions
-            .into_iter()
-            .map(|py_version| py_version.0)
-            .collect::<Vec<_>>();
-
-        Ok(self.evaluate_extras_and_python_version(&extras, &python_versions))
-    }
-
-    /// Returns whether the markers apply for the given environment
-    #[allow(clippy::needless_pass_by_value)]
-    #[pyo3(name = "evaluate_markers_and_report")]
-    pub fn py_evaluate_markers_and_report(
-        &self,
-        env: &MarkerEnvironment,
-        extras: Vec<String>,
-    ) -> PyResult<(bool, Vec<MarkerWarning>)> {
-        let extras = extras
-            .into_iter()
-            .map(|extra| ExtraName::from_str(&extra))
-            .collect::<Result<Vec<_>, InvalidNameError>>()
-            .map_err(|err| PyPep508Error::new_err(err.to_string()))?;
-
-        Ok(self.evaluate_markers_and_report(env, &extras))
-    }
-}
 
 impl Requirement {
     /// Returns `true` if the [`Version`] satisfies the [`Requirement`].
@@ -1012,32 +861,6 @@ fn parse(cursor: &mut Cursor, working_dir: Option<&Path>) -> Result<Requirement,
         marker,
         origin: None,
     })
-}
-
-/// A library for [dependency specifiers](https://packaging.python.org/en/latest/specifications/dependency-specifiers/)
-/// as originally specified in [PEP 508](https://peps.python.org/pep-0508/)
-///
-/// This has `Version` and `VersionSpecifier` included. That is because
-/// `pep440_rs.Version("1.2.3") != pep508_rs.Requirement("numpy==1.2.3").version_or_url` as the
-/// `Version`s come from two different binaries and can therefore never be equal.
-#[cfg(feature = "pyo3")]
-#[pymodule]
-#[pyo3(name = "pep508_rs")]
-pub fn python_module(py: Python<'_>, m: &Bound<PyModule>) -> PyResult<()> {
-    use pyo3::prelude::*;
-    // Allowed to fail if we embed this module in another
-    #[allow(unused_must_use)]
-    {
-        pyo3_log::try_init();
-    }
-
-    m.add_class::<PyVersion>()?;
-    m.add_class::<VersionSpecifier>()?;
-
-    m.add_class::<Requirement>()?;
-    m.add_class::<MarkerEnvironment>()?;
-    m.add("Pep508Error", py.get_type_bound::<PyPep508Error>())?;
-    Ok(())
 }
 
 /// Half of these tests are copied from <https://github.com/pypa/packaging/pull/624>
