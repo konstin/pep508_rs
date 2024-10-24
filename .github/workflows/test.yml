@@ -18,12 +18,12 @@ jobs:
         run: pipx run ruff check
       - name: Rustfmt
         run: cargo fmt --all -- --check
-      - name: Clippy (pure rust)
+      - name: Clippy
         run: cargo clippy --tests -- -D warnings
-      - name: Clippy (pyo3)
+      - name: Clippy (all features)
         run: cargo clippy --tests --all-features -- -D warnings
 
-  test-rust:
+  test:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
