@@ -1,3 +1,8 @@
+# 0.8.0
+
+- Remove rkyv feature
+- Use tracing-test instead of testing_logger
+
 # 0.7.0
 
 - Remove pyo3

@@ -15,12 +15,6 @@ use crate::normalize::{
 ///
 /// See: <https://packaging.python.org/en/latest/specifications/name-normalization/>
 #[cfg_attr(feature = "serde", derive(Serialize))]
-#[cfg_attr(
-    feature = "rkyv",
-    derive(rkyv::Archive, rkyv::Deserialize, rkyv::Serialize),
-    archive(check_bytes),
-    archive_attr(derive(Debug))
-)]
 #[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct PackageName(String);
 

@@ -438,7 +438,7 @@ impl MarkerExpression {
                     Some(operator) => operator,
                 };
 
-                let specifier = match VersionSpecifier::new(operator, r_vpat) {
+                let specifier = match VersionSpecifier::from_pattern(operator, r_vpat) {
                     Ok(specifier) => specifier,
                     Err(err) => {
                         reporter(
@@ -517,7 +517,7 @@ impl MarkerExpression {
                             Some(operator) => operator,
                         };
 
-                        let specifier = match VersionSpecifier::new(
+                        let specifier = match VersionSpecifier::from_pattern(
                             operator,
                             VersionPattern::verbatim(r_version.clone()),
                         ) {
@@ -626,7 +626,7 @@ impl MarkerExpression {
                     let r_vpat = r_string.parse::<VersionPattern>().ok()?;
                     let operator = operator.to_pep440_operator()?;
                     // operator and right hand side make the specifier
-                    let specifier = VersionSpecifier::new(operator, r_vpat).ok()?;
+                    let specifier = VersionSpecifier::from_pattern(operator, r_vpat).ok()?;
 
                     let compatible = python_versions
                         .iter()
@@ -650,7 +650,7 @@ impl MarkerExpression {
                     let compatible = python_versions.iter().any(|r_version| {
                         // operator and right hand side make the specifier and in this case the
                         // right hand is `python_version` so changes every iteration
-                        match VersionSpecifier::new(
+                        match VersionSpecifier::from_pattern(
                             operator,
                             VersionPattern::verbatim(r_version.clone()),
                         ) {
@@ -1293,59 +1293,66 @@ mod test {
 
     #[test]
     #[cfg(feature = "tracing")]
-    fn warnings() {
+    #[tracing_test::traced_test]
+    fn warnings1() {
         let env37 = env37();
-        testing_logger::setup();
         let compare_keys = MarkerTree::from_str("platform_version == sys_platform").unwrap();
         compare_keys.evaluate(&env37, &[]);
-        testing_logger::validate(|captured_logs| {
-            assert_eq!(
-                captured_logs[0].body,
-                "Comparing two markers with each other doesn't make any sense, evaluating to false"
-            );
-            assert_eq!(captured_logs[0].level, log::Level::Warn);
-            assert_eq!(captured_logs.len(), 1);
-        });
+        logs_contain(
+            "Comparing two markers with each other doesn't make any sense, will evaluate to false",
+        );
+    }
+
+    #[test]
+    #[cfg(feature = "tracing")]
+    #[tracing_test::traced_test]
+    fn warnings2() {
+        let env37 = env37();
         let non_pep440 = MarkerTree::from_str("python_version >= '3.9.'").unwrap();
         non_pep440.evaluate(&env37, &[]);
-        testing_logger::validate(|captured_logs| {
-            assert_eq!(
-                captured_logs[0].body,
-                "Expected PEP 440 version to compare with python_version, found '3.9.', \
-                 evaluating to false: after parsing 3.9, found \".\" after it, \
-                 which is not part of a valid version"
-            );
-            assert_eq!(captured_logs[0].level, log::Level::Warn);
-            assert_eq!(captured_logs.len(), 1);
-        });
+        logs_contain(
+            "Expected PEP 440 version to compare with python_version, found `3.9.`, \
+             will evaluate to false: after parsing `3.9`, found `.`, which is \
+             not part of a valid version",
+        );
+    }
+
+    #[test]
+    #[cfg(feature = "tracing")]
+    #[tracing_test::traced_test]
+    fn warnings3() {
+        let env37 = env37();
         let string_string = MarkerTree::from_str("'b' >= 'a'").unwrap();
         string_string.evaluate(&env37, &[]);
-        testing_logger::validate(|captured_logs| {
-            assert_eq!(
-                captured_logs[0].body,
-                "Comparing two quoted strings with each other doesn't make sense: 'b' >= 'a', evaluating to false"
-            );
-            assert_eq!(captured_logs[0].level, log::Level::Warn);
-            assert_eq!(captured_logs.len(), 1);
-        });
-        let string_string = MarkerTree::from_str(r#"os.name == 'posix' and platform.machine == 'x86_64' and platform.python_implementation == 'CPython' and 'Ubuntu' in platform.version and sys.platform == 'linux'"#).unwrap();
+        logs_contain(
+            "Comparing two quoted strings with each other doesn't make sense: 'b' >= 'a', will evaluate to false"
+        );
+    }
+
+    #[test]
+    #[cfg(feature = "tracing")]
+    #[tracing_test::traced_test]
+    fn warnings4() {
+        let env37 = env37();
+        let string_string = MarkerTree::from_str(r"os.name == 'posix' and platform.machine == 'x86_64' and platform.python_implementation == 'CPython' and 'Ubuntu' in platform.version and sys.platform == 'linux'").unwrap();
         string_string.evaluate(&env37, &[]);
-        testing_logger::validate(|captured_logs| {
-            let messages: Vec<_> = captured_logs
+        logs_assert(|lines: &[&str]| {
+            let lines: Vec<_> = lines
                 .iter()
-                .map(|message| {
-                    assert_eq!(message.level, log::Level::Warn);
-                    &message.body
-                })
+                .map(|s| s.split_once("  ").unwrap().1)
                 .collect();
             let expected = [
-                "os.name is deprecated in favor of os_name",
-                "platform.machine is deprecated in favor of platform_machine",
-                "platform.python_implementation is deprecated in favor of platform_python_implementation",
-                "platform.version is deprecated in favor of platform_version",
-                "sys.platform  is deprecated in favor of sys_platform"
+                "WARN warnings4: pep508_rs::marker: os.name is deprecated in favor of os_name",
+                "WARN warnings4: pep508_rs::marker: platform.machine is deprecated in favor of platform_machine",
+                "WARN warnings4: pep508_rs::marker: platform.python_implementation is deprecated in favor of platform_python_implementation",
+                "WARN warnings4: pep508_rs::marker: platform.version is deprecated in favor of platform_version",
+                "WARN warnings4: pep508_rs::marker: sys.platform  is deprecated in favor of sys_platform"
             ];
-            assert_eq!(messages, &expected);
+            if lines == expected {
+                Ok(())
+            } else {
+                Err(format!("{:?}", lines))
+            }
         });
     }
 

@@ -938,7 +938,7 @@ mod tests {
 
     #[test]
     fn basic_examples() {
-        let input = r#"requests[security,tests] >=2.8.1, ==2.8.* ; python_version < '2.7'"#;
+        let input = r#"requests[security,tests] ==2.8.*, >=2.8.1 ; python_version < '2.7'"#;
         let requests = Requirement::from_str(input).unwrap();
         assert_eq!(input, requests.to_string());
         let expected = Requirement {
@@ -949,12 +949,12 @@ mod tests {
             ],
             version_or_url: Some(VersionOrUrl::VersionSpecifier(
                 [
-                    VersionSpecifier::new(
+                    VersionSpecifier::from_pattern(
                         Operator::GreaterThanEqual,
                         VersionPattern::verbatim(Version::new([2, 8, 1])),
                     )
                     .unwrap(),
-                    VersionSpecifier::new(
+                    VersionSpecifier::from_pattern(
                         Operator::Equal,
                         VersionPattern::wildcard(Version::new([2, 8])),
                     )
@@ -1416,7 +1416,7 @@ mod tests {
         assert_err(
             "name==1.0.org1",
             indoc! {"
-                after parsing 1.0, found \".org1\" after it, which is not part of a valid version
+                after parsing `1.0`, found `.org1`, which is not part of a valid version
                 name==1.0.org1
                     ^^^^^^^^^^"
             },
