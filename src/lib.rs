@@ -32,6 +32,9 @@ pub use marker::{
     MarkerValueString, MarkerValueVersion, MarkerWarningKind, StringVersion,
 };
 pub use normalize::{ExtraName, InvalidNameError, PackageName};
+/// Version and version specifiers used in requirements (reexport).
+// https://github.com/konstin/pep508_rs/issues/19
+pub use pep440_rs;
 pub use verbatim_url::{split_scheme, VerbatimUrl};
 
 mod marker;

@@ -1,3 +1,7 @@
+# 0.8.1
+
+- Reexport pep440_rs
+
 # 0.8.0
 
 - Remove rkyv feature
