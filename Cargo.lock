@@ -95,12 +95,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "indoc"
-version = "2.0.5"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b248f5224d1d606005e02c97f5aa4e88eeb230488bcc03bc9ca4d7991399f2b5"
-
-[[package]]
 name = "insta"
 version = "1.41.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -207,11 +201,8 @@ version = "0.9.1"
 dependencies = [
  "boxcar",
  "indexmap",
- "indoc",
  "insta",
  "itertools",
- "log",
- "once_cell",
  "pep440_rs",
  "regex",
  "rustc-hash",
@@ -219,7 +210,6 @@ dependencies = [
  "serde",
  "serde_json",
  "smallvec",
- "testing_logger",
  "thiserror",
  "tracing",
  "tracing-test",
@@ -412,15 +402,6 @@ dependencies = [
  "proc-macro2",
  "quote",
  "unicode-ident",
-]
-
-[[package]]
-name = "testing_logger"
-version = "0.1.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6d92b727cb45d33ae956f7f46b966b25f1bc712092aeef9dba5ac798fc89f720"
-dependencies = [
- "log",
 ]
 
 [[package]]
