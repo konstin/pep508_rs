@@ -1,7 +1,6 @@
 use std::borrow::Cow;
 use std::str::FromStr;
 
-#[cfg(feature = "serde")]
 use serde::{Deserialize, Deserializer, Serialize};
 
 use crate::normalize::{
@@ -14,8 +13,7 @@ use crate::normalize::{
 /// down to a single `-`, e.g., `---`, `.`, and `__` all get converted to just `-`.
 ///
 /// See: <https://packaging.python.org/en/latest/specifications/name-normalization/>
-#[cfg_attr(feature = "serde", derive(Serialize))]
-#[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
+#[derive(Serialize, Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct PackageName(String);
 
 impl PackageName {
@@ -65,7 +63,6 @@ impl FromStr for PackageName {
     }
 }
 
-#[cfg(feature = "serde")]
 impl<'de> Deserialize<'de> for PackageName {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where

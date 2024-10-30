@@ -1,6 +1,6 @@
 [package]
 name = "pep508_rs"
-version = "0.8.1"
+version = "0.9.0"
 description = "A library for python dependency specifiers, better known as PEP 508"
 edition = "2021"
 include = ["/src", "Changelog.md", "License-Apache", "License-BSD", "Readme.md", "pyproject.toml"]
@@ -13,25 +13,36 @@ repository = "https://github.com/konstin/pep508_rs"
 name = "pep508_rs"
 crate-type = ["cdylib", "rlib"]
 
+[lints.clippy]
+collapsible_if = "allow"
+
 [dependencies]
+boxcar = "0.2.6"
+indexmap = "2.6.0"
+itertools = "0.13.0"
 once_cell = "1.19.0"
-pep440_rs = "0.7.1"
+pep440_rs = { version = "0.7.2", features = ["version-ranges"] }
 regex = "1.10.4"
-serde = { version = "1.0.198", features = ["derive"], optional = true }
-serde_json = { version = "1.0.116", optional = true }
+rustc-hash = "2.0.0"
+schemars = { version = "0.8.21", optional = true }
+serde = { version = "1.0.198", features = ["rc", "derive"] }
+smallvec = "1.13.2"
 thiserror = "1.0.59"
 tracing = { version = "0.1.40", optional = true }
 unicode-width = "0.2.0"
-url = "2.5.0"
+url = { version = "2.5.0", features = ["serde"] }
 urlencoding = "2.1.3"
+version-ranges = "0.1.0"
 
 [dev-dependencies]
 indoc = "2.0.5"
+insta = "1.41.0"
+log = "0.4.22"
 serde_json = "1.0.116"
+testing_logger = "0.1.1"
 tracing-test = "0.2.5"
 
 [features]
-serde = ["dep:serde", "url/serde"]
 tracing = ["dep:tracing", "pep440_rs/tracing"]
 # PEP 508 allows only URLs such as `foo @ https://example.org/foo` or `foo @ file:///home/ferris/foo`, and
 # arguably does not allow relative paths in file URLs (`foo @ file://./foo`,
@@ -41,5 +52,6 @@ tracing = ["dep:tracing", "pep440_rs/tracing"]
 # be supported.
 non-pep508-extensions = []
 default = []
+schemars = ["dep:schemars"]
 
 

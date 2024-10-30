@@ -1,3 +1,7 @@
+# 0.9.0
+
+- Rewritten markers for sounds arithmetic operation and being much faster
+
 # 0.8.1
 
 - Reexport pep440_rs
