@@ -17,6 +17,7 @@ use std::path::{Component, Path, PathBuf};
 ///
 /// When a relative path is provided with `..` components that extend beyond the base directory.
 /// For example, `./a/../../b` cannot be normalized because it escapes the base directory.
+#[cfg_attr(not(feature = "non-pep508-extensions"), allow(dead_code))]
 pub fn normalize_absolute_path(path: &Path) -> Result<PathBuf, std::io::Error> {
     let mut components = path.components().peekable();
     let mut ret = if let Some(c @ Component::Prefix(..)) = components.peek().copied() {
@@ -58,6 +59,7 @@ pub fn normalize_absolute_path(path: &Path) -> Result<PathBuf, std::io::Error> {
 /// `/C:/Users/ferris/wheel-0.42.0.tar.gz`.
 ///
 /// On other platforms, this is a no-op.
+#[cfg_attr(not(feature = "non-pep508-extensions"), allow(dead_code))]
 pub fn normalize_url_path(path: &str) -> Cow<'_, str> {
     // Apply percent-decoding to the URL.
     let path = urlencoding::decode(path).unwrap_or(Cow::Borrowed(path));

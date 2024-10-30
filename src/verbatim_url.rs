@@ -9,6 +9,7 @@ use std::sync::LazyLock;
 use thiserror::Error;
 use url::{ParseError, Url};
 
+#[cfg(feature = "non-pep508-extensions")]
 use crate::path::{normalize_absolute_path, normalize_url_path};
 use crate::Pep508Url;
 
@@ -80,6 +81,7 @@ impl VerbatimUrl {
     }
 
     /// Parse a URL from an absolute path.
+    #[cfg(feature = "non-pep508-extensions")]
     pub fn from_absolute_path(path: impl AsRef<Path>) -> Result<Self, VerbatimUrlError> {
         let path = path.as_ref();
 
@@ -139,6 +141,7 @@ impl VerbatimUrl {
     }
 
     /// Return the underlying [`Path`], if the URL is a file URL.
+    #[cfg(feature = "non-pep508-extensions")]
     pub fn as_path(&self) -> Result<PathBuf, VerbatimUrlError> {
         self.url
             .to_file_path()
@@ -209,11 +212,8 @@ impl Pep508Url for VerbatimUrl {
     type Err = VerbatimUrlError;
 
     /// Create a `VerbatimUrl` to represent the requirement.
-    fn parse_url(
-        url: &str,
-        #[cfg_attr(not(feature = "non-pep508-extensions"), allow(unused_variables))]
-        working_dir: Option<&Path>,
-    ) -> Result<Self, Self::Err> {
+    #[cfg_attr(not(feature = "non-pep508-extensions"), allow(unused_variables))]
+    fn parse_url(url: &str, working_dir: Option<&Path>) -> Result<Self, Self::Err> {
         // Expand environment variables in the URL.
         let expanded = expand_env_vars(url);
 
@@ -222,18 +222,24 @@ impl Pep508Url for VerbatimUrl {
                 // Ex) `file:///home/ferris/project/scripts/...`, `file://localhost/home/ferris/project/scripts/...`, or `file:../ferris/`
                 Some(Scheme::File) => {
                     // Strip the leading slashes, along with the `localhost` host, if present.
-                    let path = strip_host(path);
 
                     // Transform, e.g., `/C:/Users/ferris/wheel-0.42.0.tar.gz` to `C:\Users\ferris\wheel-0.42.0.tar.gz`.
-                    let path = normalize_url_path(path);
-
                     #[cfg(feature = "non-pep508-extensions")]
-                    if let Some(working_dir) = working_dir {
-                        return Ok(VerbatimUrl::from_path(path.as_ref(), working_dir)?
-                            .with_given(url.to_string()));
-                    }
+                    {
+                        let path = strip_host(path);
 
-                    Ok(VerbatimUrl::from_absolute_path(path.as_ref())?.with_given(url.to_string()))
+                        let path = normalize_url_path(path);
+
+                        if let Some(working_dir) = working_dir {
+                            return Ok(VerbatimUrl::from_path(path.as_ref(), working_dir)?
+                                .with_given(url.to_string()));
+                        }
+
+                        Ok(VerbatimUrl::from_absolute_path(path.as_ref())?
+                            .with_given(url.to_string()))
+                    }
+                    #[cfg(not(feature = "non-pep508-extensions"))]
+                    Ok(VerbatimUrl::parse_url(expanded)?.with_given(url.to_string()))
                 }
 
                 // Ex) `https://download.pytorch.org/whl/torch_stable.html`
@@ -245,24 +251,33 @@ impl Pep508Url for VerbatimUrl {
                 // Ex) `C:\Users\ferris\wheel-0.42.0.tar.gz`
                 _ => {
                     #[cfg(feature = "non-pep508-extensions")]
-                    if let Some(working_dir) = working_dir {
-                        return Ok(VerbatimUrl::from_path(expanded.as_ref(), working_dir)?
-                            .with_given(url.to_string()));
-                    }
+                    {
+                        if let Some(working_dir) = working_dir {
+                            return Ok(VerbatimUrl::from_path(expanded.as_ref(), working_dir)?
+                                .with_given(url.to_string()));
+                        }
 
-                    Ok(VerbatimUrl::from_absolute_path(expanded.as_ref())?
-                        .with_given(url.to_string()))
+                        Ok(VerbatimUrl::from_absolute_path(expanded.as_ref())?
+                            .with_given(url.to_string()))
+                    }
+                    #[cfg(not(feature = "non-pep508-extensions"))]
+                    Err(Self::Err::NotAUrl(expanded.to_string()))
                 }
             }
         } else {
             // Ex) `../editable/`
             #[cfg(feature = "non-pep508-extensions")]
-            if let Some(working_dir) = working_dir {
-                return Ok(VerbatimUrl::from_path(expanded.as_ref(), working_dir)?
-                    .with_given(url.to_string()));
+            {
+                if let Some(working_dir) = working_dir {
+                    return Ok(VerbatimUrl::from_path(expanded.as_ref(), working_dir)?
+                        .with_given(url.to_string()));
+                }
+
+                Ok(VerbatimUrl::from_absolute_path(expanded.as_ref())?.with_given(url.to_string()))
             }
 
-            Ok(VerbatimUrl::from_absolute_path(expanded.as_ref())?.with_given(url.to_string()))
+            #[cfg(not(feature = "non-pep508-extensions"))]
+            Err(Self::Err::NotAUrl(expanded.to_string()))
         }
     }
 }
@@ -285,6 +300,11 @@ pub enum VerbatimUrlError {
     /// Received a path that could not be normalized.
     #[error("path could not be normalized: {0}")]
     Normalization(PathBuf, #[source] std::io::Error),
+
+    /// Received a path that could not be normalized.
+    #[cfg(not(feature = "non-pep508-extensions"))]
+    #[error("Not a URL (missing scheme): {0}")]
+    NotAUrl(String),
 }
 
 /// Expand all available environment variables.
@@ -379,6 +399,7 @@ pub fn strip_host(path: &str) -> &str {
 ///
 /// For example, given `file:///home/ferris/project/scripts#hash=somehash`, returns
 /// `("/home/ferris/project/scripts", Some("hash=somehash"))`.
+#[cfg_attr(not(feature = "non-pep508-extensions"), allow(dead_code))]
 fn split_fragment(path: &Path) -> (Cow<Path>, Option<&str>) {
     let Some(s) = path.to_str() else {
         return (Cow::Borrowed(path), None);

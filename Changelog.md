@@ -1,3 +1,7 @@
+# 0.9.1
+
+- Fix feature scoping to support the wasm32-unknown-unknown target
+
 # 0.9.0
 
 - Rewritten markers for sounds arithmetic operation and being much faster
