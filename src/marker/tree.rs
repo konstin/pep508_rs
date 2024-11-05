@@ -1994,7 +1994,7 @@ mod test {
             if lines == expected {
                 Ok(())
             } else {
-                Err(format!("{:?}", lines))
+                Err(format!("{lines:?}"))
             }
         });
     }
