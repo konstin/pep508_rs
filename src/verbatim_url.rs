@@ -1,3 +1,4 @@
+use once_cell::sync::Lazy;
 use regex::Regex;
 use std::borrow::Cow;
 use std::cmp::Ordering;
@@ -5,7 +6,6 @@ use std::fmt::Debug;
 use std::hash::Hash;
 use std::ops::Deref;
 use std::path::{Path, PathBuf};
-use std::sync::LazyLock;
 use thiserror::Error;
 use url::{ParseError, Url};
 
@@ -325,13 +325,13 @@ pub enum VerbatimUrlError {
 pub fn expand_env_vars(s: &str) -> Cow<'_, str> {
     // Generate the project root, to be used via the `${PROJECT_ROOT}`
     // environment variable.
-    static PROJECT_ROOT_FRAGMENT: LazyLock<String> = LazyLock::new(|| {
+    static PROJECT_ROOT_FRAGMENT: Lazy<String> = Lazy::new(|| {
         let project_root = std::env::current_dir().unwrap();
         project_root.to_string_lossy().to_string()
     });
 
-    static RE: LazyLock<Regex> =
-        LazyLock::new(|| Regex::new(r"(?P<var>\$\{(?P<name>[A-Z0-9_]+)})").unwrap());
+    static RE: Lazy<Regex> =
+        Lazy::new(|| Regex::new(r"(?P<var>\$\{(?P<name>[A-Z0-9_]+)})").unwrap());
 
     RE.replace_all(s, |caps: &regex::Captures<'_>| {
         let name = caps.name("name").unwrap().as_str();
