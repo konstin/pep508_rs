@@ -51,9 +51,9 @@ use std::sync::Mutex;
 use std::sync::MutexGuard;
 
 use itertools::Either;
+use once_cell::sync::Lazy;
 use pep440_rs::{release_specifier_to_range, Operator, Version, VersionSpecifier};
 use rustc_hash::FxHashMap;
-use std::sync::LazyLock;
 use version_ranges::Ranges;
 
 use crate::marker::MarkerValueExtra;
@@ -61,7 +61,7 @@ use crate::ExtraOperator;
 use crate::{MarkerExpression, MarkerOperator, MarkerValueString, MarkerValueVersion};
 
 /// The global node interner.
-pub(crate) static INTERNER: LazyLock<Interner> = LazyLock::new(Interner::default);
+pub(crate) static INTERNER: Lazy<Interner> = Lazy::new(Interner::default);
 
 /// An interner for decision nodes.
 ///

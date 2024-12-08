@@ -203,6 +203,7 @@ dependencies = [
  "indexmap",
  "insta",
  "itertools",
+ "once_cell",
  "pep440_rs",
  "regex",
  "rustc-hash",
