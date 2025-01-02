@@ -1,3 +1,7 @@
+# 0.9.2
+
+- Use once_cell to lower MSRV
+
 # 0.9.1
 
 - Fix feature scoping to support the wasm32-unknown-unknown target
