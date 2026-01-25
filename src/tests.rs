@@ -698,6 +698,18 @@ fn error_random_char() {
 }
 
 #[test]
+fn error_invalid_package_name() {
+    assert_snapshot!(
+        parse_pep508_err("1. >= 1"),
+        @r##"
+    Not a valid package or extra name: "1.". Names must start and end with a letter or digit and may only contain -, _, ., and alphanumeric characters.
+    1. >= 1
+    ^
+    "##
+    );
+}
+
+#[test]
 #[cfg(feature = "non-pep508-extensions")]
 fn error_invalid_extra_unnamed_url() {
     assert_snapshot!(

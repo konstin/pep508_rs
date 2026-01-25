@@ -473,8 +473,12 @@ fn parse_name<T: Pep508Url>(cursor: &mut Cursor) -> Result<PackageName, Pep508Er
                 }
             }
             Some(_) | None => {
-                return Ok(PackageName::new(name)
-                    .expect("`PackageName` validation should match PEP 508 parsing"));
+                return PackageName::new(name).map_err(|e| Pep508Error {
+                    message: Pep508ErrorSource::String(e.to_string()),
+                    start: 0,
+                    len: 1,
+                    input: cursor.to_string(),
+                });
             }
         }
     }
