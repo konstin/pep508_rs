@@ -400,7 +400,7 @@ pub fn strip_host(path: &str) -> &str {
 /// For example, given `file:///home/ferris/project/scripts#hash=somehash`, returns
 /// `("/home/ferris/project/scripts", Some("hash=somehash"))`.
 #[cfg_attr(not(feature = "non-pep508-extensions"), allow(dead_code))]
-fn split_fragment(path: &Path) -> (Cow<Path>, Option<&str>) {
+fn split_fragment(path: &Path) -> (Cow<'_, Path>, Option<&str>) {
     let Some(s) = path.to_str() else {
         return (Cow::Borrowed(path), None);
     };
