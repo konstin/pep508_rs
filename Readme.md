@@ -3,6 +3,10 @@
 [![Crates.io](https://img.shields.io/crates/v/pep508_rs.svg?logo=rust&style=flat-square)](https://crates.io/crates/pep508_rs)
 [![docs.rs](https://img.shields.io/docsrs/pep508_rs?style=flat-square)](https://docs.rs/pep508_rs)
 
+**Note: This library is feature-complete, but it also isn't actively maintained anymore.**
+
+---
+
 A library for python [dependency specifiers](https://packaging.python.org/en/latest/specifications/dependency-specifiers/), better known as [PEP 508](https://peps.python.org/pep-0508/).
 
 ## Usage
